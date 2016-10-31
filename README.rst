@@ -1,13 +1,7 @@
-django-councilmatic
+django-councilmatic-notifications
 ===========
 
-This is a Django app with core functions for the `Councilmatic family <http://www.councilmatic.org/>`_, a set of web apps for keeping tabs on local city council. It is built upon the open civic data standard, and ultimately makes Councilmatic easier to re-deploy in new cities.
-
-django-councilmatic includes:
-
-- data models for bills, people, organizations, events, and more
-- a task to load data from the open civic data api
-- views & templates for bill/person/organization/event pages, search, and more
+This is a Django app with notification functions for the `Councilmatic family <http://www.councilmatic.org/>`_, a set of web apps for keeping tabs on local city council. It is built upon the open civic data standard, and ultimately makes Councilmatic easier to re-deploy in new cities.
 
 The `Councilmatic family <http://www.councilmatic.org/>`_ includes:
 

@@ -1,0 +1,8 @@
+include LICENSE
+include README.rst
+recursive-include notifications/static *
+recursive-include notifications/templates *
+recursive-include notifications/migrations *
+recursive-include notifications/management *
+recursive-include notifications/templatetags *
+

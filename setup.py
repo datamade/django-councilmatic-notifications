@@ -18,7 +18,10 @@ setup(
     url='http://councilmatic.org/',
     author='DataMade, LLC',
     author_email='info@datamade.us',
-    install_requires=['django-councilmatic>=0.7',],
+    install_requires=[
+        'django-councilmatic>=0.7',
+        'django-rq==0.9.3'
+    ],
     classifiers=[
         'Environment :: Web Environment',
         'Framework :: Django',

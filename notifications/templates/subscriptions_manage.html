@@ -11,13 +11,13 @@
             <i class="fa fa-bullhorn fa-fw" aria-hidden="true"></i>
             Alerts
         </h1>
-        <p>This page shows the {{ CITY_VOCAB.COUNCIL_MEMBERS | lower }}, committee actions, committee events, bill searches, bill actions, and {{ CITY_VOCAB.EVENTS | lower }} you are subscribed to.</p>
+        <p>This page shows your subscriptions to {{ CITY_VOCAB.COUNCIL_MEMBERS | lower }}, committee actions, committee events, bill searches, bill actions, and {{ CITY_VOCAB.EVENTS | lower }}.</p>
         <hr />
 
         <table class='table' id='subscriptions'>
             <thead>
                 <tr>
-                    <th>Alert Type</th>
+                    <th>Alert type</th>
                     <th>Name</th>
                     <th>RSS</th>
                     <th></th>
@@ -128,6 +128,7 @@
                     <td>
                         All
                     </td>
+                    <td>&nbsp;</td>
                     <td align="left">
                         <button data-toggle="modal" data-target="#unsubscribe-modal" title="delete this alert" class="btn btn-default btn-xs prompt-unsubscribe"><i class="fa fa-trash-o fa-fw" aria-hidden="true"></i></button>
                     </td>

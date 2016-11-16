@@ -1,0 +1,7 @@
+{% load staticfiles %}
+
+Thanks for signing up for {{ SITE_META.site_name }}!
+
+Use this link to activate your account:
+{% url 'notifications_activation' user.profile.activation_key %}
+

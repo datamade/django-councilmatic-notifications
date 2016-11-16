@@ -49,3 +49,11 @@ class EventsSubscription(Subscription):
     # This subscribes to all recent/upcoming events as per https://github.com/datamade/nyc-councilmatic/issues/175
     # XXX: not implemented yet
     pass
+
+class SubscriptionProfile(models.Model):
+    user = models.OneToOneField(User)
+    activation_key = models.CharField(max_length=40)
+    key_expires = models.DateTimeField()
+
+    def __str__(self):
+        return '{} Subscription profile'.format(self.user.username)

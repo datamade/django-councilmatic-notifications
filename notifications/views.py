@@ -1,43 +1,49 @@
-from django.shortcuts import render
-from django.contrib.auth import authenticate, login, logout
-from django.http import HttpResponseRedirect, HttpResponse
-from django.conf import settings
-from django.core.urlresolvers import reverse
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
-from django.views.generic import TemplateView, ListView, DetailView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.template.loader import get_template
-from django.template import Context
-from django.db.models import Q
-from django.db import IntegrityError
-
-from councilmatic_core.models import Bill, Organization, Person, Event
-from notifications.models import PersonSubscription, BillActionSubscription, CommitteeActionSubscription, CommitteeEventSubscription, BillSearchSubscription, EventsSubscription
-from django.core.exceptions import ObjectDoesNotExist
-#from councilmatic.settings import * # XXX seems like I should definitely not be importing "from councilmatic. " over in django-councilmatic
+import json
+import datetime
+import pytz
+import sys
+import random
+import hashlib
 
 import rq
 
 from redis import Redis
 
 import django_rq
-import json
-import datetime
-import pytz
-import sys
 
-from django.core.mail import send_mail
+from django.shortcuts import render, get_object_or_404
+from django.http import HttpResponseRedirect, HttpResponse
+from django.conf import settings
+from django import forms
+from django.utils import timezone
+
+from django.core.urlresolvers import reverse
+from django.core.exceptions import ObjectDoesNotExist
+from django.core.mail import send_mail, EmailMessage
 from django.core.cache import cache
 
-from django.forms import EmailField
-from django.core.mail import EmailMessage
-
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User # XXX TODO: migrate to custom User model https://docs.djangoproject.com/en/1.9/topics/auth/customizing/ http://blog.mathandpencil.com/replacing-django-custom-user-models-in-an-existing-application/ https://www.caktusgroup.com/blog/2013/08/07/migrating-custom-user-model-django/
 
-from django import forms
-from django.utils.translation import ugettext, ugettext_lazy as _
+from django.views.decorators.csrf import csrf_exempt
+from django.views.generic import TemplateView, ListView, DetailView
+
+from django.template.loader import get_template
+from django.template import Context
+
+from django.db.models import Q
+from django.db import IntegrityError
+
+from councilmatic_core.models import Bill, Organization, Person, Event
+from notifications.models import PersonSubscription, BillActionSubscription, \
+    CommitteeActionSubscription, CommitteeEventSubscription, \
+    BillSearchSubscription, EventsSubscription, SubscriptionProfile
+
+from notifications.utils import send_signup_email
 
 app_timezone = pytz.timezone(settings.TIME_ZONE)
 
@@ -49,7 +55,7 @@ notifications_queue= django_rq.get_queue('notifications')
 notification_emails_queue= django_rq.get_queue('notification_emails')
 
 class CouncilmaticUserCreationForm(UserCreationForm):
-    email = EmailField(label="Email address", required=True,
+    email = forms.EmailField(label="Email address", required=True,
         help_text="Required.")
 
     class Meta:
@@ -61,7 +67,59 @@ class CouncilmaticUserCreationForm(UserCreationForm):
         user.email = self.cleaned_data["email"]
         if commit:
             user.save()
+        
+        profile = SubscriptionProfile()
+        profile.user = user
+        
+        salt = hashlib.sha1(str(random.random()).encode('utf-8')).hexdigest()[:5]
+        activation_key = hashlib.sha1((salt + user.username).encode('utf-8')).hexdigest()
+        
+        profile.activation_key = activation_key
+        
+        now = timezone.now()
+        expiration = now + datetime.timedelta(days=1)
+        profile.key_expires = expiration
+
+        profile.save()
+
         return user
+
+def notifications_activation(request, activation_key):
+    
+    profile = get_object_or_404(SubscriptionProfile, 
+                                activation_key=activation_key)
+    
+    message_level = 'INFO'
+
+    if not profile.user.is_active:
+        
+        if timezone.now() > profile.key_expires:
+            
+            salt = hashlib.sha1(str(random.random()).encode('utf-8')).hexdigest()[:5]
+            activation_key = hashlib.sha1((salt + profile.user.username).encode('utf-8')).hexdigest()
+            
+            profile.activation_key = activation_key
+            profile.save()
+            
+            send_signup_email(profile.user)
+            
+            message = 'Your activation link has expired. A new link has been sent to your email.'
+            message_level = 'ERROR'
+
+        else:
+            profile.user.is_active = True
+            profile.user.save()
+            login(request, profile.user)
+            message = 'Your account has been activated!'
+
+    else:
+        message = 'Your account has already been activated.'
+
+    messages.add_message(request, 
+                         getattr(messages, message_level), 
+                         message)
+
+    return HttpResponseRedirect(reverse('index'))
 
 def notifications_signup(request):
     form = None
@@ -69,8 +127,16 @@ def notifications_signup(request):
         form = CouncilmaticUserCreationForm(data=request.POST)
         if form.is_valid():
             try:
-                form.save()
-                return HttpResponseRedirect(reverse('index')) # XXX should either display or redirect to content saying to check your email
+                user = form.save()
+                
+                redirect = reverse('index')
+                if request.GET.get('next'):
+                    redirect = request.GET['next']
+                
+                send_signup_email(user)
+                messages.add_message(request, messages.INFO, 'Check your email for a link to confirm your account!')
+                
+                return HttpResponseRedirect(redirect)
             except IntegrityError:
                 response = HttpResponse('Not able to save form.')
                 response.status_code = 500
@@ -82,7 +148,6 @@ def notifications_signup(request):
     return render(request, 'notifications_signup.html', {'form': form})
 
 def notifications_login(request):
-    print ("notifications_login()")
     form = None
     if request.method == 'POST':
         form = AuthenticationForm(data=request.POST)
@@ -90,7 +155,12 @@ def notifications_login(request):
             try:
                 user = form.get_user()
                 login(request, user)
-                return HttpResponseRedirect(reverse('index'))
+                
+                redirect = reverse('index')
+                if request.GET.get('next'):
+                    redirect = request.GET['next']
+
+                return HttpResponseRedirect(redirect)
             except IntegrityError:
                 response = HttpResponse('Not able to find or login user.')
                 response.status_code = 500

@@ -1,10 +1,10 @@
 {% load staticfiles %}
 
 <a id='logo' href="{{ SITE_META.site_url}}">
-  <img src='{{SITE_META.site_url}}{% static 'images/logo-lg.png' %}' alt='Large Lots' />
+    <img src='{{SITE_META.site_url}}{% static 'images/logo-lg.png' %}' alt='{{ SITE_META.site_name }}' />
 </a>
 <div class="row">
     <h1>Thanks for signing up for {{ SITE_META.site_name }}!</h1>
-    <p><a href="{% url 'notifications_activation' user.profile.activation_key %}">Click here to confirm your account</a></p>
+    <p><a href="{{ host }}{% url 'notifications_activation' user.subscriptionprofile.activation_key %}{% if redirect %}?next={{ redirect }}{% endif %}">Click here to confirm your account</a></p>
 
 </div>

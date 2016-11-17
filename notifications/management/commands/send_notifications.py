@@ -1,6 +1,7 @@
 import os
 import json
 from collections import OrderedDict
+import itertools
 
 import django_rq
 
@@ -77,38 +78,58 @@ class Command(BaseCommand):
             committee_action_ids = [i for i in user_subscriptions['committee_action_ids'] if i]
             committee_event_ids = [i for i in user_subscriptions['committee_event_ids'] if i]
             person_ids = [i for i in user_subscriptions['person_ids'] if i]
+            
+            send_notification = False
 
             if bill_action_ids:
                 bill_action_updates = self.find_bill_action_updates(bill_action_ids)
-            
+                
+                if bill_action_updates:
+                    send_notification = True
+
             if bill_search_terms or bill_search_facets:
                 bill_search_updates = self.find_bill_search_updates(bill_search_terms, 
                                                                     bill_search_facets)
 
+                if bill_search_updates:
+                    send_notification = True
+
             if committee_action_ids:
                 committee_action_updates = self.find_committee_action_updates(committee_action_ids)
 
+                if committee_action_updates:
+                    send_notification = True
+
             if committee_event_ids:
                 committee_event_updates = self.find_committee_event_updates(committee_event_ids)
+
+                if committee_event_updates:
+                    send_notification = True
             
             if person_ids:
                 person_updates = self.find_person_updates(person_ids)
-        
-            send_notification_email.delay(user_id=user_subscriptions['user_id'],
-                                          user_email=user_subscriptions['user_email'],
-                                          bill_action_updates=bill_action_updates,
-                                          bill_search_updates=bill_search_updates,
-                                          person_updates=person_updates,
-                                          committee_action_updates=committee_action_updates,
-                                          committee_event_updates=committee_event_updates)
+
+                if person_updates:
+                    send_notification = True
+            
+            if send_notification:
+                send_notification_email.delay(user_id=user_subscriptions['user_id'],
+                                              user_email=user_subscriptions['user_email'],
+                                              bill_action_updates=bill_action_updates,
+                                              bill_search_updates=bill_search_updates,
+                                              person_updates=person_updates,
+                                              committee_action_updates=committee_action_updates,
+                                              committee_event_updates=committee_event_updates)
 
     def find_bill_action_updates(self, bill_ids):
         
         new_actions = ''' 
-            SELECT 
+            SELECT DISTINCT ON (bill.ocd_id)
               bill.slug AS bill_slug,
               bill.identifier AS bill_identifier,
-              action.description AS action_description
+              bill.description AS bill_description,
+              action.description AS action_description,
+              action.date AS action_date
             FROM new_action AS new
             JOIN councilmatic_core_bill AS bill
               ON new.bill_id = bill.ocd_id
@@ -124,20 +145,99 @@ class Command(BaseCommand):
 
         for row in cursor:
             
-            bill = dict(zip(['slug', 'identifier'], row[:2]))
-            action = {'description': row[2]}
+            bill = {
+                'slug': row[0],
+                'identifier': row[1],
+                'description': row[2],
+            }
+            action = {
+                'description': row[3],
+                'date': row[4],
+            }
 
             bill_action_updates.append((bill, action))
             
         return bill_action_updates
 
-    def find_bill_search_updates(self):
+    def find_bill_search_updates(self, search_terms, search_facets):
         pass
     
-    def find_person_updates(self):
+    def find_person_updates(self, person_ids):
         # If person sponsors something new
         # If bill sponsored by person has new or updated action
-        pass
+        # Return list of (person, bill)
+        
+        new_sponsorships = ''' 
+            SELECT DISTINCT ON (person.ocd_id, bill.ocd_id)
+              person.name,
+              person.slug,
+              bill.identifier,
+              bill.slug,
+              bill.description
+            FROM new_sponsorship AS new
+            JOIN councilmatic_core_person AS person
+              ON new.person_id = person.ocd_id
+            JOIN councilmatic_core_bill AS bill
+              ON new.bill_id = bill.ocd_id
+            WHERE new.person_id IN %s
+        '''
+
+        new_actions = ''' 
+            SELECT DISTINCT ON (person.ocd_id, bill.ocd_id)
+              person.name,
+              person.slug,
+              bill.identifier,
+              bill.slug, 
+              bill.description
+            FROM new_action AS new
+            JOIN councilmatic_core_bill AS bill
+              ON new.bill_id = bill.ocd_id
+            JOIN councilmatic_core_sponsorship AS sponsor
+              ON bill.ocd_id = sponsor.bill_id
+            JOIN councilmatic_core_person AS person
+              ON sponsor.person_id = person.ocd_id
+            WHERE person.ocd_id IN %s
+        '''
+        
+        person_updates = []
+        
+        cursor = connection.cursor()
+        cursor.execute(new_sponsorships, [tuple(person_ids)])
+
+        for row in cursor:
+            person = {
+                'name': row[0],
+                'slug': row[1],
+            }
+            bill = {
+                'identifier': row[2],
+                'slug': row[3],
+                'description': row[4],
+                'update_type': 'New Sponsorship'
+            }
+            person_updates.append((person, bill))
+
+        cursor.execute(new_actions, [tuple(person_ids)])
+
+        for row in cursor:
+            person = {
+                'name': row[0],
+                'slug': row[1],
+            }
+            bill = {
+                'identifier': row[2],
+                'slug': row[3],
+                'description': row[4],
+                'update_type': 'New Action'
+            }
+            person_updates.append((person, bill))
+        
+        update_groups = []
+        for person, group in itertools.groupby(person_updates, key=lambda x: x[0]['slug']):
+            person['bills'] = [i[1] for i in group]
+            update_groups.append(person)
+
+        return update_groups
     
     def find_committee_action_updates(self):
         pass
@@ -157,6 +257,7 @@ def send_notification_email(user_id=None,
     context = {
         # 'user': user, 
         'SITE_META': settings.SITE_META,
+        'CITY_VOCAB': settings.CITY_VOCAB,
         'bill_action_updates': bill_action_updates,
         'bill_search_updates': bill_search_updates,
         'person_updates': person_updates,

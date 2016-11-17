@@ -5,14 +5,14 @@
 <head>
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css" rel="stylesheet">
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700,300italic' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" type="text/css" href="{% static 'css/bootstrap.journal.min.css' %}" />
-    <link rel="stylesheet" type="text/css" href="{% static 'css/dataTables.bootstrap.css' %}" />
-    <link rel="stylesheet" type="text/css" href="{% static 'css/custom.css' %}" />
-    <link rel="stylesheet" type="text/css" href="{% static 'css/city_custom.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{{ SITE_META.site_url }}{% static 'css/bootstrap.journal.min.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{{ SITE_META.site_url }}{% static 'css/dataTables.bootstrap.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{{ SITE_META.site_url }}{% static 'css/custom.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{{ SITE_META.site_url }}{% static 'css/city_custom.css' %}" />
 </head>
 <body>
     <div class="container">
-        <div class="row-fluid">
+        <div class="row">
             <div class="col-sm-12">
                 <br class="non-mobile-only"/>
                 <h1>Notifications</h1>
@@ -22,43 +22,52 @@
         </div>
 
         {% if person_updates %}
-        <div class="row-fluid">
+        <div class="row">
            <div class="col-sm-8 table-col">
-               <h3>Person Notifications</h3>
+               <h3>{{ CITY_VOCAB.COUNCIL_MEMBER }} Notifications</h3>
                <div class="table-responsive">
+                   {% for person in person_updates %}
+                   <h5>
+                       <a href="{{SITE_META.site_url}}{% url 'person' person.slug %}">
+                           {{person.name}}
+                       </a>
+                   </h5>
                    <table class='table' id='subscriptions'>
                        <thead>
                            <tr>
-                               <th>Person</th>
-                               <th>Bill Introduced</th>
+                               <th>Bill</th>
+                               <th>Description</th>
                                <th>RSS</th>
                            </tr>
                        </thead>
                        <tbody>
-                           {% for person, bill in person_updates %}
+                           {% for bill in person.bills %}
                            <tr>
-                               <td align="left">
-                                   <div>
-                                       <a href="{{SITE_URL}}{% url 'person' person.slug %}">{{person.name}}</a>
-                                   </div>
+                               <td>
+                                   <a href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
+                                       {{bill.identifier}}
+                                   </a>
                                </td>
                                <td>
-                                   <a href="{{SITE_URL}}{% url 'bill_detail' bill.slug %}">{{bill.slug}}</a>: {{bill.description}}
+                                   {{bill.description}}
                                </td>
                                <td>
-                                   <a href="{{SITE_URL}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.name}}"><i class="fa fa-rss-square" aria-hidden="true"></i></a>
+                                   <a href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
+                                       <i class="fa fa-rss-square" aria-hidden="true"></i>
+                                   </a>
                                </td>
                            </tr>
                            {% endfor %}
                        </tbody>
                    </table>
+                   {% endfor %}
                </div>
            </div>
         </div>
         {% endif %}
 
         {% if committee_action_updates %}
-        <div class="row-fluid">
+        <div class="row">
            <div class="col-sm-8 table-col">
                <h3>Committee Action Notifications</h3>
                <div class="table-responsive">
@@ -79,10 +88,10 @@
                                    </div>
                                </td>
                                <td>
-                                   <a href="{{SITE_URL}}{% url 'bill_detail' bill.slug %}">{{action.date|date:"SHORT_DATE_FORMAT"}}: {{action.description}}</a>
+                                   <a href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">{{action.date|date:"SHORT_DATE_FORMAT"}}: {{action.description}}</a>
                                </td>
                                <td>
-                                   <a href="{{SITE_URL}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.name}}"><i class="fa fa-rss-square" aria-hidden="true"></i></a>
+                                   <a href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}"><i class="fa fa-rss-square" aria-hidden="true"></i></a>
                                </td>
                            </tr>
                            {% endfor %}
@@ -94,7 +103,7 @@
         {% endif %}
 
         {% if committee_event_updates %}
-        <div class="row-fluid">
+        <div class="row">
            <div class="col-sm-8 table-col">
                <h3>Committee Event Notifications</h3>
                <div class="table-responsive">
@@ -114,7 +123,7 @@
                                    </div>
                                </td>
                                <td>
-                                   <a href="{{SITE_URL}}{% url 'event_detail' event.slug %}">{{event.start_time|date:"SHORT_DATE_FORMAT"}}: {{event.name}} {{event.description }}</a>
+                                   <a href="{{SITE_META.site_url}}{% url 'event_detail' event.slug %}">{{event.start_time|date:"SHORT_DATE_FORMAT"}}: {{event.name}} {{event.description }}</a>
                                </td>
                            </tr>
                            {% endfor %}
@@ -126,7 +135,7 @@
         {% endif %}
 
         {% if bill_search_updates %}
-        <div class="row-fluid">
+        <div class="row">
            <div class="col-sm-8 table-col">
                <h3>Bill Search Notifications</h3>
                <div class="table-responsive">
@@ -147,7 +156,7 @@
                                    </div>
                                </td>
                                <td>
-                                   <a href="{{SITE_URL}}{% url 'bill_detail' bill.slug %}">{{bill.name}}</a>
+                                   <a href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">{{bill.identifier}}</a>
                                </td>
                                <td>
                                    <!-- XXX Search RSS here -->
@@ -162,7 +171,7 @@
         {% endif %}
 
         {% if bill_action_updates %}
-        <div class="row-fluid">
+        <div class="row">
            <div class="col-sm-8 table-col">
                <h3>Bill Action Notifications</h3>
                <div class="table-responsive">
@@ -179,16 +188,16 @@
                            <tr>
                                <td align="left">
                                    <div>
-                                       {{bill.slug}}
+                                       {{bill.identifier}}
                                    </div>
                                </td>
                                <td>
-                                   <a href="{{SITE_URL}}{% url 'bill_detail' bill.slug %}">
-                                       {{action.date|date:"SHORT_DATE_FORMAT"}}: {{action.description}}
+                                   <a href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
+                                       {{action.date|date:"M j, Y"}}: {{action.description}}
                                    </a>
                                </td>
                                <td>
-                                   <a href="{{SITE_URL}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
+                                   <a href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
                                        <i class="fa fa-rss-square" aria-hidden="true"></i>
                                    </a>
                                </td>

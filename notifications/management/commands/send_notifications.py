@@ -165,7 +165,6 @@ class Command(BaseCommand):
     def find_person_updates(self, person_ids):
         # If person sponsors something new
         # If bill sponsored by person has new or updated action
-        # Return list of (person, bill)
         
         new_sponsorships = ''' 
             SELECT DISTINCT ON (person.ocd_id, bill.ocd_id)
@@ -188,10 +187,14 @@ class Command(BaseCommand):
               person.slug,
               bill.identifier,
               bill.slug, 
-              bill.description
+              bill.description,
+              action.description,
+              action.date
             FROM new_action AS new
             JOIN councilmatic_core_bill AS bill
               ON new.bill_id = bill.ocd_id
+            JOIN councilmatic_core_action AS action
+              ON bill.ocd_id = action.bill_id
             JOIN councilmatic_core_sponsorship AS sponsor
               ON bill.ocd_id = sponsor.bill_id
             JOIN councilmatic_core_person AS person
@@ -213,6 +216,8 @@ class Command(BaseCommand):
                 'identifier': row[2],
                 'slug': row[3],
                 'description': row[4],
+                'action_description': None,
+                'action_date': None,
                 'update_type': 'New Sponsorship'
             }
             person_updates.append((person, bill))
@@ -228,22 +233,160 @@ class Command(BaseCommand):
                 'identifier': row[2],
                 'slug': row[3],
                 'description': row[4],
+                'action_description': row[5],
+                'action_date': row[6],
                 'update_type': 'New Action'
             }
             person_updates.append((person, bill))
         
         update_groups = []
-        for person, group in itertools.groupby(person_updates, key=lambda x: x[0]['slug']):
-            person['bills'] = [i[1] for i in group]
-            update_groups.append(person)
 
+        outer_grouper = lambda x: x[0]['slug']
+        person_updates = sorted(person_updates, key=outer_grouper)
+        
+        inner_grouper = lambda x: x[1]['update_type']
+
+        for slug, group in itertools.groupby(person_updates, key=outer_grouper):
+            bill_group = {}
+            
+            group = sorted(group, key=inner_grouper)
+
+            for update_type, inner_group in itertools.groupby(group, key=inner_grouper):
+                bill_group[update_type] = {}
+                
+                for person, bill in inner_group:
+                    bill_group[update_type].update(person)
+
+                    try:
+                        bill_group[update_type]['bills'].append(bill)
+                    except KeyError:
+                        bill_group[update_type]['bills'] = [bill]
+            
+            update_groups.append(bill_group)
+        
         return update_groups
     
-    def find_committee_action_updates(self):
-        pass
-    
-    def find_committee_event_updates(self):
-        pass
+    def find_committee_action_updates(self, committee_ids):
+        # New actions taken by a committee on a bill
+
+        new_actions = ''' 
+            SELECT DISTINCT ON (committee.ocd_id, bill.ocd_id, action.id)
+              committee.name,
+              committee.slug,
+              bill.identifier,
+              bill.slug,
+              bill.description,
+              action.description,
+              action.date,
+              action.order
+            FROM councilmatic_core_organization AS committee
+            JOIN councilmatic_core_action AS action
+              ON committee.ocd_id = action.organization_id
+            JOIN councilmatic_core_bill AS bill 
+              ON action.bill_id = bill.ocd_id
+            JOIN new_action AS new
+              ON bill.ocd_id = new.bill_id
+            WHERE committee.ocd_id IN %s
+            ORDER BY committee.ocd_id,
+                     bill.ocd_id,
+                     action.id,
+                     action.order DESC
+        '''
+        
+        cursor = connection.cursor()
+        cursor.execute(new_actions, [tuple(committee_ids)])
+        
+        committee_updates = []
+        
+        outer_grouper = lambda x: x[1]
+        inner_grouper = lambda x: x[3]
+        groups = sorted(cursor, key=outer_grouper)
+
+        for committee_slug, group in itertools.groupby(groups, key=outer_grouper):
+            
+            group = sorted(group, key=inner_grouper)
+            
+            committee_group = {
+                'name': group[0][0],
+                'slug': group[0][1],
+                'bills': []
+            }
+            
+            
+            for bill_slug, bill_group in itertools.groupby(group, key=inner_grouper):
+                
+                bill_group = list(bill_group)
+
+                bill = {
+                    'identifier': bill_group[0][2],
+                    'slug': bill_group[0][3],
+                    'description': bill_group[0][4],
+                    'actions': []
+                }
+                
+
+                for row in sorted(bill_group, key=lambda x: x[7], reverse=True):
+                    action = {
+                        'description': row[5],
+                        'date': row[6]
+                    }
+                    
+                    bill['actions'].append(action)
+                
+                committee_group['bills'].append(bill)
+                
+            committee_updates.append(committee_group)
+
+        return committee_updates
+
+    def find_committee_event_updates(self, committee_ids):
+        new_events = ''' 
+            SELECT DISTINCT ON (committee.ocd_id, event.ocd_id)
+              committee.name,
+              committee.slug,
+              event.*
+            FROM councilmatic_core_event AS event
+            JOIN new_event AS new
+              ON event.ocd_id = new.ocd_id
+            JOIN councilmatic_core_eventparticipant AS p
+              ON event.ocd_id = p.event_id
+            JOIN councilmatic_core_organization AS committee
+              ON p.entity_name = committee.name
+            WHERE committee.ocd_id IN %s
+            ORDER BY committee.ocd_id,
+                     event.ocd_id,
+                     event.start_time DESC
+        '''
+
+        cursor = connection.cursor()
+        cursor.execute(new_events, [tuple(committee_ids)])
+        columns = [c[0] for c in cursor.description]
+
+        updates = []
+        
+        grouper = lambda x: x[1]
+        event_groups = sorted(cursor, key=grouper)
+
+        for slug, group in itertools.groupby(event_groups, key=grouper):
+            group = list(group)
+
+            committee = {
+                'name': group[0][0],
+                'slug': group[0][1],
+                'events': []
+            }
+            
+            for row in group:
+                event = dict(zip(columns[2:], row[2:]))
+                committee['events'].append(event)
+            
+            committee['events'] = sorted(committee['events'], 
+                                         key=lambda x: x['start_time'], 
+                                         reverse=True)
+
+            updates.append(committee)
+
+        return updates
 
 @django_rq.job
 def send_notification_email(user_id=None,

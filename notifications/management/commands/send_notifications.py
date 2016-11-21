@@ -20,12 +20,11 @@ class Command(BaseCommand):
     help = 'Send email notifications to subscribed users'
     
     def add_arguments(self, parser):
-        pass
-        # parser.add_argument(
-        #     '--subscription_types',
-        #     default='organizations,people,bills,events,search',
-        #     help='Comma separated list of subscription types to send notifications for'
-        # )
+        parser.add_argument(
+            '--users',
+            default='all',
+            help='Comma separated list of usernames to send notifications to.'
+        )
     
     def handle(self, *args, **options):
         
@@ -50,17 +49,25 @@ class Command(BaseCommand):
               ON u.id = ces.user_id
             LEFT JOIN notifications_personsubscription AS ps
               ON u.id = ps.user_id
-            WHERE bas.bill_id IS NOT NULL
-              OR bss.search_term IS NOT NULL
-              OR bss.search_facets IS NOT NULL
-              OR cas.committee_id IS NOT NULL
-              OR ces.committee_id IS NOT NULL
-              OR ps.person_id IS NOT NULL
-            GROUP BY u.id
+            WHERE (bas.bill_id IS NOT NULL
+                   OR bss.search_term IS NOT NULL
+                   OR bss.search_facets IS NOT NULL
+                   OR cas.committee_id IS NOT NULL
+                   OR ces.committee_id IS NOT NULL
+                   OR ps.person_id IS NOT NULL)
         '''
         
+        q_args = []
+
+        if options['users'] != 'all':
+            users = tuple(options['users'].split(','))
+            subscribed_users = '{} AND u.username IN %s'.format(subscribed_users)
+            q_args.append(users)
+            
+
+        subscribed_users = '{} GROUP BY u.id'.format(subscribed_users)
         cursor = connection.cursor()
-        cursor.execute(subscribed_users)
+        cursor.execute(subscribed_users, q_args)
         columns = [c[0] for c in cursor.description]
         
         for row in cursor:

@@ -15,6 +15,7 @@ from django.core.urlresolvers import reverse
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMessage
 from django.core.cache import cache
+from django.core import management
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -345,6 +346,12 @@ def events_unsubscribe(request):
 
     return HttpResponse('%s unsubscribed from all events.' % str(request.user))
 
+@login_required(login_url='/login/')
+def send_notifications(request):
+    
+    management.call_command('send_notifications', users=request.user.username)
+
+    return HttpResponse(json.dumps({'status': 'ok'}), content_type='application/json')
 # The function worker_handle_notification_email() is invoked when the 'notifications_emails' queue (notification_emails_queue)
 # is woken up.
 

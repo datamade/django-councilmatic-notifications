@@ -6,7 +6,8 @@ from notifications.views import notifications_login, notifications_logout, \
     SubscriptionsManageView, person_subscribe, person_unsubscribe, bill_subscribe, \
     bill_unsubscribe, committee_events_subscribe, committee_events_unsubscribe, \
     committee_actions_subscribe, committee_actions_unsubscribe, search_check_subscription, \
-    search_subscribe, search_unsubscribe, events_subscribe, events_unsubscribe
+    search_subscribe, search_unsubscribe, events_subscribe, events_unsubscribe, \
+    send_notifications
 
 import django_rq
 
@@ -45,6 +46,8 @@ urlpatterns = [
         events_subscribe, name='events_subscribe'),
     url(r'^events/unsubscribe/$',
         events_unsubscribe, name='events_unsubscribe'),
+    url(r'^send-notifications/$',
+        send_notifications, name='send-notifications'),
     # django-rq: https://github.com/ui/django-rq
     url(r'^django-rq/', include('django_rq.urls')),
 ]

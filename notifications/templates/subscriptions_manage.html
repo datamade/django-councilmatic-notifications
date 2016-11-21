@@ -4,7 +4,7 @@
 {% block title %}Alerts{% endblock %}
 {% block content %}
 
-<div class="row-fluid">
+<div class="row">
     <div class="col-sm-12">
         <br class="non-mobile-only"/>
         <h1>
@@ -156,6 +156,11 @@
 
     </div>
 </div>
+<div class="row">
+    <div class="col-sm-12 text-right">
+        <button class="btn btn-default" id="trigger-send-notifications">Send my notifications email</button>
+    </div>
+</div>
 
     <!-- XXX TODO: figure out why this "No Subscriptions" headers isn't working -->
     <!--
@@ -177,20 +182,36 @@
 
 <script>
 
-    $('#unsubscribe-modal').modal({show:false})
+    $(document).ready(function(){
+        $('#unsubscribe-modal').modal({show:false})
 
 
-    // 1. Person Subscriptions
-    // 2. Committee Actions Subscriptions
-    // 3. Committee Events Subscriptions
-    // 4. Bill Search Subscriptions
-    // 5. Bill Actions Subscriptions
-    // 6. Events Subscriptions
-    var row_to_delete = null
-    $(".prompt-unsubscribe").click(function() {
-        console.log("prompt unsubscribe")
-        row_to_delete = $(this).parents(".subscription");
-    });
+        // 1. Person Subscriptions
+        // 2. Committee Actions Subscriptions
+        // 3. Committee Events Subscriptions
+        // 4. Bill Search Subscriptions
+        // 5. Bill Actions Subscriptions
+        // 6. Events Subscriptions
+        var row_to_delete = null
+        $(".prompt-unsubscribe").click(function() {
+            console.log("prompt unsubscribe")
+            row_to_delete = $(this).parents(".subscription");
+        });
+        $("#trigger-unsubscribe").click(function(){
+            console.log(row_to_delete)
+            removeSubscription()
+        });
+
+        $('#trigger-send-notifications').on('click', function(e){
+            $.when($.getJSON("{% url 'send-notifications' %}")).then(
+                function(data){
+                    console.log(data);
+                }
+            )
+        })
+
+    })
+
 
 
     // remove the actual interest
@@ -206,10 +227,6 @@
         });
     }
 
-    $("#trigger-unsubscribe").click(function(){
-        console.log(row_to_delete)
-        removeSubscription()
-    });
 
 
 </script>

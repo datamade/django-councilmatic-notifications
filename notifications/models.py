@@ -39,8 +39,7 @@ class CommitteeEventSubscription(Subscription):
     committee = models.ForeignKey(Organization, related_name = 'subscriptions_events')
     
 class BillSearchSubscription(Subscription):
-    search_term = models.CharField(max_length=256) # string model # XXX TODO: add an index using (automatic) migrations
-    search_facets = JSONField() # XXX TODO: Add "GIN" index using manual RunSQL migration (http://michael.otacoo.com/postgresql-2/postgres-9-4-feature-highlight-indexing-jsonb/)
+    search_params = JSONField(db_index=True, null=True) 
     
 class BillActionSubscription(Subscription):
     bill = models.ForeignKey(Bill, related_name = 'subscriptions')

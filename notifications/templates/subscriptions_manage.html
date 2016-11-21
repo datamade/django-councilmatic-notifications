@@ -1,4 +1,5 @@
 {% extends "base_with_margins.html" %}
+{% load notifications_extras %}
 {% load extras %}
 {% load staticfiles %}
 {% block title %}Alerts{% endblock %}
@@ -82,11 +83,11 @@
                     <td>
                         <b>Search term:</b>
                         <a href="{{ subscription|custom_reverse_search_url }}">
-                            {{subscription.search_term }}
+                            {{subscription.search_params.term }}
                         </a>
                         <br/>
                         <span class="small text-muted">
-                        {% for key, values in subscription.search_facets.items %}
+                        {% for key, values in subscription.search_params.facets.items %}
                             <b>{{key}}</b>:
                             {% for v in values %}
                                 {{v}}

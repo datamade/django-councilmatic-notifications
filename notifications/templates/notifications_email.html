@@ -167,32 +167,44 @@
            <div class="col-sm-8 table-col">
                <h3>Bill Search Notifications</h3>
                <div class="table-responsive">
-                   <table class='table' id='subscriptions'>
-                       <thead>
-                       <tr>
-                           <th>Search</th>
-                           <th>Bill</th>
-                           <th>RSS</th>
-                       </tr>
-                       </thead>
-                       <tbody>
-                           {% for search, bill in bill_search_updates %}
+                  {% for search in bill_search_updates %}
+                       <h5>
+                           Term: {{ search.params.term }}
+                           {% if search.params.facets %}
+                               <br />
+                               Selected facets:&nbsp;
+                               {% for facet, values in search.params.facets.items %}
+                               {{ facet }}: {% for value in values %}{{ value }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                               {% endfor%}
+                           {% endif %}
+                       </h5>
+                       <table class='table' id='subscriptions'>
+                           <thead>
                            <tr>
-                               <td align="left">
-                                   <div>
-                                       {{search}}
-                                   </div>
-                               </td>
-                               <td>
-                                   <a href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">{{bill.identifier}}</a>
-                               </td>
-                               <td>
-                                   <!-- XXX Search RSS here -->
-                               </td>
+                               <th>Bill</th>
+                               <th>RSS</th>
+                               <th>Description</th>
                            </tr>
-                                   {% endfor %}
-                       </tbody>
-                   </table>
+                           </thead>
+                           <tbody>
+                               {% for bill in search.bills %}
+                               <tr>
+                                   <td>
+                                       <a href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">{{bill.identifier}}</a>
+                                   </td>
+                                   <td>
+                                       <a href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
+                                           <i class="fa fa-rss-square" aria-hidden="true"></i>
+                                       </a>
+                                   </td>
+                                   <td>
+                                       {{ bill.description }}
+                                   </td>
+                               </tr>
+                                       {% endfor %}
+                           </tbody>
+                       </table>
+                   {% endfor %}
                </div>
            </div>
         </div>

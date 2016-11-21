@@ -288,10 +288,9 @@ def committee_actions_unsubscribe(request, slug):
 def search_subscribe(request):
     q = request.POST.get('query')
     selected_facets = request.POST.get('selected_facets')
-    dict_selected_facets = json.loads(selected_facets)
+    search_params = {'term': q, 'facets': json.loads(selected_facets)}
     (bss, created) = BillSearchSubscription.objects.get_or_create(user=request.user, 
-                                                                  search_term=q, 
-                                                                  search_facets=dict_selected_facets)
+                                                                  search_params=search_params)
 
     return HttpResponse('Subscribed to search for: %s.' % q)
 
@@ -300,9 +299,11 @@ def search_unsubscribe(request):
     q = request.POST.get('query')
     selected_facets = request.POST.get('selected_facets')
     selected_facets_json = json.loads(selected_facets)
+    search_params = {'term': q, 'facets': selected_facets_json}
 
     try:
-        bss = BillSearchSubscription.objects.get(user=request.user,search_term__exact=q, search_facets__exact=selected_facets_json)
+        bss = BillSearchSubscription.objects.get(user=request.user,
+                                                 search_params__exact=search_params)
     except ObjectDoesNotExist:
         response = HttpResponse('This search subscription does not exist.')
         response.status_code = 500
@@ -315,10 +316,13 @@ def search_unsubscribe(request):
 def search_check_subscription(request):
     q = request.POST.get('query')
     selected_facets = request.POST.get('selected_facets')
-    dict_selected_facets = json.loads(selected_facets)
-
+    selected_facets_json = json.loads(selected_facets)
+    search_params = {'term': q, 'facets': selected_facets_json}
+    
     try:
-        bss = BillSearchSubscription.objects.get(user=request.user, search_term__exact=q, search_facets__exact = dict_selected_facets)
+        bss = BillSearchSubscription.objects.get(user=request.user, 
+                                                 search_params__exact=search_params)
+
     except ObjectDoesNotExist:
         response = HttpResponse('This bill search subscription does not exist.')
         response.status_code = 500

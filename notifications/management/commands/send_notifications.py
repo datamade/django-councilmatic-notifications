@@ -2,8 +2,10 @@ import os
 import json
 from collections import OrderedDict
 import itertools
+import requests
 
 import django_rq
+import pysolr
 
 from django.core.management.base import BaseCommand, CommandError
 from django.core.mail import EmailMultiAlternatives
@@ -15,6 +17,11 @@ from django.template.loader import get_template
 from django.conf import settings
 
 from django.contrib.auth.models import User
+
+try:
+    haystack_url = settings.HAYSTACK_CONNECTIONS['default']['URL']
+except KeyError:
+    haystack_url = None
 
 class Command(BaseCommand):
     help = 'Send email notifications to subscribed users'
@@ -32,12 +39,11 @@ class Command(BaseCommand):
             SELECT 
               u.id AS user_id,
               MAX(u.email) as user_email,
-              array_agg(bas.bill_id) AS bill_action_ids,
-              array_agg(bss.search_term) AS bill_search_terms,
-              array_agg(bss.search_facets) AS bill_search_facets,
-              array_agg(cas.committee_id) AS committee_action_ids,
-              array_agg(ces.committee_id) AS committee_event_ids,
-              array_agg(ps.person_id) as person_ids
+              array_agg(DISTINCT bas.bill_id) AS bill_action_ids,
+              array_agg(DISTINCT bss.search_params) AS bill_search_params,
+              array_agg(DISTINCT cas.committee_id) AS committee_action_ids,
+              array_agg(DISTINCT ces.committee_id) AS committee_event_ids,
+              array_agg(DISTINCT ps.person_id) as person_ids
             FROM auth_user AS u
             LEFT JOIN notifications_billactionsubscription AS bas
               ON u.id = bas.user_id
@@ -50,8 +56,7 @@ class Command(BaseCommand):
             LEFT JOIN notifications_personsubscription AS ps
               ON u.id = ps.user_id
             WHERE (bas.bill_id IS NOT NULL
-                   OR bss.search_term IS NOT NULL
-                   OR bss.search_facets IS NOT NULL
+                   OR bss.search_params IS NOT NULL
                    OR cas.committee_id IS NOT NULL
                    OR ces.committee_id IS NOT NULL
                    OR ps.person_id IS NOT NULL)
@@ -80,8 +85,7 @@ class Command(BaseCommand):
             person_updates = []
             
             bill_action_ids = [i for i in user_subscriptions['bill_action_ids'] if i]
-            bill_search_terms = [i for i in user_subscriptions['bill_search_terms'] if i]
-            bill_search_facets = [i for i in user_subscriptions['bill_search_facets'] if i]
+            bill_search_params = [i for i in user_subscriptions['bill_search_params'] if i]
             committee_action_ids = [i for i in user_subscriptions['committee_action_ids'] if i]
             committee_event_ids = [i for i in user_subscriptions['committee_event_ids'] if i]
             person_ids = [i for i in user_subscriptions['person_ids'] if i]
@@ -94,9 +98,8 @@ class Command(BaseCommand):
                 if bill_action_updates:
                     send_notification = True
 
-            if bill_search_terms or bill_search_facets:
-                bill_search_updates = self.find_bill_search_updates(bill_search_terms, 
-                                                                    bill_search_facets)
+            if bill_search_params:
+                bill_search_updates = self.find_bill_search_updates(bill_search_params)
 
                 if bill_search_updates:
                     send_notification = True
@@ -166,8 +169,61 @@ class Command(BaseCommand):
             
         return bill_action_updates
 
-    def find_bill_search_updates(self, search_terms, search_facets):
-        pass
+    def find_bill_search_updates(self, search_params):
+        
+        if not haystack_url:
+            self.stdout.write(self.style.ERROR('Solr is not configured so no search notifications will be sent'))
+            return []
+        
+        search_updates = []
+        
+        cursor = connection.cursor()
+
+        for params in search_params:
+            query_params = {
+                'q': params['term'], 
+                'fq': [],
+                'wt': 'json'
+            }
+
+            for facet, values in params['facets'].items():
+                for value in values:
+                    query_params['fq'].append('{0}:{1}'.format(facet, value))
+            
+            results = requests.get('{}/select'.format(haystack_url), params=query_params)
+            
+            ocd_ids = tuple(r['ocd_id'] for r in results.json()['response']['docs'])
+            
+            new_bills = ''' 
+                SELECT DISTINCT ON (bill.ocd_id)
+                  bill.slug AS bill_slug,
+                  bill.identifier AS bill_identifier,
+                  bill.description AS bill_description
+                FROM new_bill AS new
+                JOIN councilmatic_core_bill AS bill
+                  ON new.ocd_id = bill.ocd_id
+                WHERE new.ocd_id IN %s
+            '''
+            
+            cursor.execute(new_bills, [ocd_ids])
+            
+            bills = []
+
+            for row in cursor:
+                bill = {
+                    'slug': row[0],
+                    'identifier': row[1],
+                    'description': row[2]
+                }
+                bills.append(bill)
+
+            if bills:
+                search_updates.append({
+                    'params': params,
+                    'bills': bills
+                })
+        
+        return search_updates
     
     def find_person_updates(self, person_ids):
         # If person sponsors something new

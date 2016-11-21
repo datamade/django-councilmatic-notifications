@@ -147,7 +147,7 @@
                                         </a>
                                    </td>
                                    <td>
-                                       {{event.start_time|date:"M j,Y fa"}}
+                                       {{event.start_time|date:"M j, Y fa"}}
                                    </td>
                                    <td>
                                         {{ event.description }}
@@ -167,32 +167,38 @@
            <div class="col-sm-8 table-col">
                <h3>Bill Search Notifications</h3>
                <div class="table-responsive">
-                   <table class='table' id='subscriptions'>
-                       <thead>
-                       <tr>
-                           <th>Search</th>
-                           <th>Bill</th>
-                           <th>RSS</th>
-                       </tr>
-                       </thead>
-                       <tbody>
-                           {% for search, bill in bill_search_updates %}
+                  {% for search in bill_search_updates %}
+                       <h5>
+                           Term: {{ search.params.term }}
+                           {% if search.params.facets %}
+                               <br />
+                               Selected facets:&nbsp;
+                               {% for facet, value in search.params.facets %}
+                                   {{ facet }}: {{ value }}{% if not forloop.last %}, {% endif %}
+                               {% endfor%}
+                           {% endif %}
+                       </h5>
+                       <table class='table' id='subscriptions'>
+                           <thead>
                            <tr>
-                               <td align="left">
-                                   <div>
-                                       {{search}}
-                                   </div>
-                               </td>
-                               <td>
-                                   <a href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">{{bill.identifier}}</a>
-                               </td>
-                               <td>
-                                   <!-- XXX Search RSS here -->
-                               </td>
+                               <th>Bill</th>
+                               <th>RSS</th>
                            </tr>
-                                   {% endfor %}
-                       </tbody>
-                   </table>
+                           </thead>
+                           <tbody>
+                               {% for bill in search.bills %}
+                               <tr>
+                                   <td>
+                                       <a href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">{{bill.identifier}}</a>
+                                   </td>
+                                   <td>
+                                       <!-- XXX Search RSS here -->
+                                   </td>
+                               </tr>
+                                       {% endfor %}
+                           </tbody>
+                       </table>
+                   {% endfor %}
                </div>
            </div>
         </div>

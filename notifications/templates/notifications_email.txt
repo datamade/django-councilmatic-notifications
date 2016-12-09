@@ -1,249 +1,103 @@
-<!DOCTYPE html>
 {% load staticfiles %}
-<html lang="en">
+** Notifications about your {{ CITY_NAME_SHORT }} Councilmatic Subscriptions
+------------------------------------------------------------
 
-<head>
-    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css" rel="stylesheet">
-    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700,300italic' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" type="text/css" href="{{ SITE_META.site_url }}{% static 'css/bootstrap.journal.min.css' %}" />
-    <link rel="stylesheet" type="text/css" href="{{ SITE_META.site_url }}{% static 'css/dataTables.bootstrap.css' %}" />
-    <link rel="stylesheet" type="text/css" href="{{ SITE_META.site_url }}{% static 'css/custom.css' %}" />
-    <link rel="stylesheet" type="text/css" href="{{ SITE_META.site_url }}{% static 'css/city_custom.css' %}" />
-</head>
-<body>
-    <div class="container">
-        <div class="row">
-            <div class="col-sm-12">
-                <br class="non-mobile-only"/>
-                <h1>Notifications</h1>
-                <p>This page shows all of the recent notifications for the various people, committees, searches, bills, and events you are subscribed to.</p>
-                <hr />
-            </div>
-        </div>
+{{ CITY_NAME_SHORT }} has updates! This email provides information about your subscriptions to council members, committee actions, committee events, bill searches, bill actions, and meetings.
 
-        {% if person_updates %}
-        <div class="row">
-            <div class="col-sm-8 table-col">
-                <h3>{{ CITY_VOCAB.COUNCIL_MEMBER }} Notifications</h3>
-                <div class="table-responsive">
-                    {% for update in person_updates %}
-                         {% for update_type, person in update.items %}
-                             <h5>
-                                 <a href="{{SITE_META.site_url}}{% url 'person' person.slug %}">
-                                     {{person.name}} - {{ update_type }}
-                                 </a>
-                             </h5>
-                             <table class='table' id='subscriptions'>
-                                 <thead>
-                                     <tr>
-                                         <th>Bill</th>
-                                         <th>RSS</th>
-                                         {% if 'Sponsorship' in update_type %}
-                                             <th>Description</th>
-                                         {% else %}
-                                             <th>Action</th>
-                                         {% endif %}
-                                     </tr>
-                                 </thead>
-                                 <tbody>
-                                     {% for bill in person.bills %}
-                                     <tr>
-                                         <td>
-                                             <a href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
-                                                 {{bill.identifier}}
-                                             </a>
-                                         </td>
-                                         <td>
-                                             <a href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
-                                                 <i class="fa fa-rss-square" aria-hidden="true"></i>
-                                             </a>
-                                         </td>
-                                         <td>
-                                             {% if bill.action_description %}
-                                                 {{ bill.action_date|date:"M j, Y"}}: {{ bill.action_description }}
-                                             {% else %}
-                                                 {{ bill.description }}
-                                             {% endif %}
-                                         </td>
-                                     </tr>
-                                     {% endfor %}
-                                 </tbody>
-                             </table>
-                         {% endfor %}
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-        {% endif %}
+** {{ CITY_VOCAB.COUNCIL_MEMBER }} Notifications
 
-        {% if committee_action_updates %}
-        <div class="row">
-           <div class="col-sm-8 table-col">
-               <div class="table-responsive">
-                   {% for committee in committee_action_updates %}
-                       <h3>{{ committee.name }} Notifications</h3>
-                       {% for bill in committee.bills %}
-                           <h5>Bill actions -
-                               <a href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
-                                   {{ bill.identifier }}
-                               </a>
-                           </h5>
-                           <table class='table' id='subscriptions'>
-                               <thead>
-                                   <tr>
-                                       <th>Date</th>
-                                       <th>Action</th>
-                                       <th>RSS</th>
-                                   </tr>
-                               </thead>
-                               <tbody>
-                                   {% for action in bill.actions %}
-                                   <tr>
-                                       <td align="left">
-                                           {{ action.date|date:"M j, Y" }}
-                                       </td>
-                                       <td>
-                                           <a href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
-                                               {{ action.description }}
-                                           </a>
-                                       </td>
-                                       <td>
-                                           <a href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
-                                               <i class="fa fa-rss-square" aria-hidden="true"></i>
-                                           </a>
-                                       </td>
-                                   </tr>
-                                   {% endfor %}
-                               </tbody>
-                           </table>
-                        {% endfor %}
-                    {% endfor %}
-               </div>
-           </div>
-        </div>
-        {% endif %}
+    {% for update in person_updates %}
+         {% for update_type, person in update.items %}
 
-        {% if committee_event_updates %}
-        <div class="row">
-           <div class="col-sm-8 table-col">
-               <h3>Committee Event Notifications</h3>
-               <div class="table-responsive">
-                   {% for committee in committee_event_updates %}
-                       <h5>{{ committee.name }}</h5>
-                       <table class='table' id='subscriptions'>
-                           <thead>
-                               <tr>
-                                   <th>Event</th>
-                                   <th>Date</th>
-                                   <th>Description</th>
-                               </tr>
-                           </thead>
-                           <tbody>
-                               {% for event in committee.events %}
-                               <tr>
-                                   <td align="left">
-                                        <a href="{{ SITE_META.site_url }}{% url 'event_detail' event.slug %}">
-                                            {{ event.name }}
-                                        </a>
-                                   </td>
-                                   <td>
-                                       {{event.start_time|date:"M j, Y fa"}}
-                                   </td>
-                                   <td>
-                                        {{ event.description }}
-                                   </td>
-                               </tr>
-                               {% endfor %}
-                           </tbody>
-                       </table>
-                   {% endfor %}
-               </div>
-           </div>
-        </div>
-        {% endif %}
+              ** {{person.name}} - {{ update_type }}
 
-        {% if bill_search_updates %}
-        <div class="row">
-           <div class="col-sm-8 table-col">
-               <h3>Bill Search Notifications</h3>
-               <div class="table-responsive">
-                  {% for search in bill_search_updates %}
-                       <h5>
-                           Term: {{ search.params.term }}
-                           {% if search.params.facets %}
-                               <br />
-                               Selected facets:&nbsp;
-                               {% for facet, value in search.params.facets %}
-                                   {{ facet }}: {{ value }}{% if not forloop.last %}, {% endif %}
-                               {% endfor%}
-                           {% endif %}
-                       </h5>
-                       <table class='table' id='subscriptions'>
-                           <thead>
-                           <tr>
-                               <th>Bill</th>
-                               <th>RSS</th>
-                           </tr>
-                           </thead>
-                           <tbody>
-                               {% for bill in search.bills %}
-                               <tr>
-                                   <td>
-                                       <a href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">{{bill.identifier}}</a>
-                                   </td>
-                                   <td>
-                                       <!-- XXX Search RSS here -->
-                                   </td>
-                               </tr>
-                                       {% endfor %}
-                           </tbody>
-                       </table>
-                   {% endfor %}
-               </div>
-           </div>
-        </div>
-        {% endif %}
+              {% for bill in person.bills %}
+                Bill : {{bill.identifier}}
+                {% if bill.action_description %}
+                   Action : {{ bill.action_date|date:"M j, Y"}}: {{ bill.action_description }}
+                {% else %}
+                   Description : {{ bill.description }}
+                {% endif %}
+              {% endfor %}
 
-        {% if bill_action_updates %}
-        <div class="row">
-           <div class="col-sm-8 table-col">
-               <h3>Bill Action Notifications</h3>
-               <div class="table-responsive">
-                   <table class='table' id='subscriptions'>
-                       <thead>
-                       <tr>
-                           <th>Bill</th>
-                           <th>Action</th>
-                           <th>RSS</th>
-                       </tr>
-                       </thead>
-                       <tbody>
-                       {% for bill, action in bill_action_updates %}
-                           <tr>
-                               <td align="left">
-                                   <div>
-                                       {{bill.identifier}}
-                                   </div>
-                               </td>
-                               <td>
-                                   <a href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
-                                       {{action.date|date:"M j, Y"}}: {{action.description}}
-                                   </a>
-                               </td>
-                               <td>
-                                   <a href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
-                                       <i class="fa fa-rss-square" aria-hidden="true"></i>
-                                   </a>
-                               </td>
-                           </tr>
-                       {% endfor %}
-                       </tbody>
-                   </table>
-               </div>
-           </div>
-        </div>
-        {% endif %}
+         {% endfor %}
 
-    </div>
-</body>
+    {% endfor %}
+
+    {% endif %}
+
+    <!-- Committee Actions -->
+    {% if committee_action_updates %}
+         {% for committee in committee_action_updates %}
+
+             ** {{ committee.name }} Notifications
+
+             {% for bill in committee.bills %}
+
+                 ** Bill actions - {{ bill.identifier }}
+
+                 {% for action in bill.actions %}
+                    Date : {{ action.date|date:"M j, Y" }}
+                    Action : {{ action.description }}
+                 {% endfor %}
+
+              {% endfor %}
+
+          {% endfor %}
+
+    {% endif %}
+
+    <!-- Committee Events -->
+    {% if committee_event_updates %}
+
+    ** Committee Event Notifications
+
+    {% for committee in committee_event_updates %}
+       ** {{ committee.name }}
+
+       {% for event in committee.events %}
+          Event : {{ event.name }}
+          Date : {{event.start_time|date:"M j, Y fa"}}
+          Description : {{ event.description }}
+       {% endfor %}
+
+    {% endfor %}
+
+    {% endif %}
+
+    <!-- Bill searches -->
+    {% if bill_search_updates %}
+
+    **Bill Search Notifications
+
+    {% for search in bill_search_updates %}
+       Term: {{ search.params.term }}
+          {% if search.params.facets %}
+             Selected facets :
+             {% for facet, values in search.params.facets.items %}
+             {{ facet }}: {% for value in values %}{{ value }}{% if not forloop.last %}, {% endif %}{% endfor %}
+             {% endfor%}
+          {% endif %}
+
+          {% for bill in search.bills %}
+            Bill : {{bill.identifier}}
+            Description : {{bill.description }}
+
+          {% endfor %}
+
+    {% endfor %}
+
+    {% endif %}
+
+    <!-- Bill actions -->
+    {% if bill_action_updates %}
+
+    ** Bill Action Notifications
+
+      {% for bill, action in bill_action_updates %}
+        Bill : {{bill.identifier}}
+        Action : {{action.date|date:"M j, Y"}}: {{action.description}}
+      {% endfor %}
+
+    {% endif %}
 

@@ -12,15 +12,12 @@
               ** {{person.name}} - {{ update_type }}
 
               {% for bill in person.bills %}
-
                 Bill : {{bill.identifier}}
-
                 {% if bill.action_description %}
                    Action : {{ bill.action_date|date:"M j, Y"}}: {{ bill.action_description }}
                 {% else %}
                    Description : {{ bill.description }}
                 {% endif %}
-
               {% endfor %}
 
          {% endfor %}
@@ -39,12 +36,10 @@
 
                  ** Bill actions - {{ bill.identifier }}
 
-                         {% for action in bill.actions %}
-
-                            Date : {{ action.date|date:"M j, Y" }}
-                            Action : {{ action.description }}
-
-                         {% endfor %}
+                 {% for action in bill.actions %}
+                    Date : {{ action.date|date:"M j, Y" }}
+                    Action : {{ action.description }}
+                 {% endfor %}
 
               {% endfor %}
 
@@ -60,13 +55,11 @@
     {% for committee in committee_event_updates %}
        ** {{ committee.name }}
 
-               {% for event in committee.events %}
-
-                  Event : {{ event.name }}
-                  Date : {{event.start_time|date:"M j, Y fa"}}
-                  Description : {{ event.description }}
-
-               {% endfor %}
+       {% for event in committee.events %}
+          Event : {{ event.name }}
+          Date : {{event.start_time|date:"M j, Y fa"}}
+          Description : {{ event.description }}
+       {% endfor %}
 
     {% endfor %}
 
@@ -102,10 +95,8 @@
     ** Bill Action Notifications
 
       {% for bill, action in bill_action_updates %}
-
         Bill : {{bill.identifier}}
         Action : {{action.date|date:"M j, Y"}}: {{action.description}}
-
       {% endfor %}
 
     {% endif %}

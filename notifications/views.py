@@ -56,15 +56,15 @@ class CouncilmaticUserCreationForm(UserCreationForm):
         user.is_active = False
         if commit:
             user.save()
-        
+
         profile = SubscriptionProfile()
         profile.user = user
-        
+
         salt = hashlib.sha1(str(random.random()).encode('utf-8')).hexdigest()[:5]
         activation_key = hashlib.sha1((salt + user.username).encode('utf-8')).hexdigest()
-        
+
         profile.activation_key = activation_key
-        
+
         now = timezone.now()
         expiration = now + datetime.timedelta(days=1)
         profile.key_expires = expiration
@@ -74,37 +74,37 @@ class CouncilmaticUserCreationForm(UserCreationForm):
         return user
 
 def notifications_activation(request, activation_key):
-    
-    profile = get_object_or_404(SubscriptionProfile, 
+
+    profile = get_object_or_404(SubscriptionProfile,
                                 activation_key=activation_key)
-    
+
     message_level = 'INFO'
     redirect = reverse('index')
-    
+
     next_url = request.GET.get('next')
-    
+
     if next_url:
         redirect = next_url
 
     if not profile.user.is_active:
-        
+
         if timezone.now() > profile.key_expires:
-            
+
             salt = hashlib.sha1(str(random.random()).encode('utf-8')).hexdigest()[:5]
             activation_key = hashlib.sha1((salt + profile.user.username).encode('utf-8')).hexdigest()
-            
+
             profile.activation_key = activation_key
             profile.save()
-            
+
             send_signup_email(profile.user, request.get_host())
-            
+
             message = 'Your activation link has expired. A new link has been sent to your email.'
             message_level = 'ERROR'
 
         else:
             profile.user.is_active = True
             profile.user.save()
-            
+
             redirect = reverse('notifications_login')
 
             if next_url:
@@ -115,8 +115,8 @@ def notifications_activation(request, activation_key):
     else:
         message = 'Your account has already been activated.'
 
-    messages.add_message(request, 
-                         getattr(messages, message_level), 
+    messages.add_message(request,
+                         getattr(messages, message_level),
                          message)
 
     return HttpResponseRedirect(redirect)
@@ -128,15 +128,15 @@ def notifications_signup(request):
         if form.is_valid():
             try:
                 user = form.save()
-                
+
                 redirect = reverse('index')
                 if request.GET.get('next'):
                     redirect = request.GET['next']
-                
+
                 host = '{0}://{1}'.format(request.scheme, request.get_host())
                 send_signup_email(user, host, redirect)
                 messages.add_message(request, messages.INFO, 'Check your email for a link to confirm your account!')
-                
+
                 return HttpResponseRedirect(redirect)
             except IntegrityError:
                 response = HttpResponse('Not able to save form.')
@@ -156,7 +156,7 @@ def notifications_login(request):
             try:
                 user = form.get_user()
                 login(request, user)
-                
+
                 redirect = reverse('index')
                 if request.GET.get('next'):
                     redirect = request.GET['next']
@@ -289,7 +289,7 @@ def search_subscribe(request):
     q = request.POST.get('query')
     selected_facets = request.POST.get('selected_facets')
     search_params = {'term': q, 'facets': json.loads(selected_facets)}
-    (bss, created) = BillSearchSubscription.objects.get_or_create(user=request.user, 
+    (bss, created) = BillSearchSubscription.objects.get_or_create(user=request.user,
                                                                   search_params=search_params)
 
     return HttpResponse('Subscribed to search for: %s.' % q)
@@ -318,9 +318,9 @@ def search_check_subscription(request):
     selected_facets = request.POST.get('selected_facets')
     selected_facets_json = json.loads(selected_facets)
     search_params = {'term': q, 'facets': selected_facets_json}
-    
+
     try:
-        bss = BillSearchSubscription.objects.get(user=request.user, 
+        bss = BillSearchSubscription.objects.get(user=request.user,
                                                  search_params__exact=search_params)
 
     except ObjectDoesNotExist:
@@ -352,7 +352,7 @@ def events_unsubscribe(request):
 
 @login_required(login_url='/login/')
 def send_notifications(request):
-    
+
     management.call_command('send_notifications', users=request.user.username)
 
     return HttpResponse(json.dumps({'status': 'ok'}), content_type='application/json')

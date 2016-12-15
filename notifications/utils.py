@@ -3,9 +3,9 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 
 def send_signup_email(user, host, redirect):
-    
+
     context = {
-        'user': user, 
+        'user': user,
         'SITE_META': settings.SITE_META,
         'host': host,
         'redirect': redirect,
@@ -17,12 +17,12 @@ def send_signup_email(user, host, redirect):
     text_template = get_template(txt)
     html_content = html_template.render(context)
     text_content = text_template.render(context)
-    subject = '{0} account activation'.format(settings.SITE_META['site_name'])
+    subject = 'Activate your account with {0}'.format(settings.SITE_META['site_name'])
 
     # send email confirmation to info@largelots.org
-    msg = EmailMultiAlternatives(subject, 
-                                 text_content, 
-                                 settings.EMAIL_HOST_USER, 
+    msg = EmailMultiAlternatives(subject,
+                                 text_content,
+                                 settings.EMAIL_HOST_USER,
                                  [user.email])
 
     msg.attach_alternative(html_content, 'text/html')

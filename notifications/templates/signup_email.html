@@ -1,10 +1,33 @@
+<!DOCTYPE html>
 {% load staticfiles %}
+<html lang="en">
 
-<a id='logo' href="{{ SITE_META.site_url}}">
-    <img src='{{SITE_META.site_url}}{% static 'images/logo-lg.png' %}' alt='{{ SITE_META.site_name }}' />
-</a>
-<div class="row">
-    <h1>Thanks for signing up for {{ SITE_META.site_name }}!</h1>
-    <p><a href="{{ host }}{% url 'notifications_activation' user.subscriptionprofile.activation_key %}{% if redirect %}?next={{ redirect }}{% endif %}">Click here to confirm your account</a></p>
+<body>
+  <span style="font-family: 'Trebuchet MS', Helvetica, sans-serif;">
 
-</div>
+  <table>
+    <tr>
+      <td>
+        <h1>{{ SITE_META.site_name }}</h1>
+      </td>
+      <td>
+         <a id='logo' href="{{ SITE_META.site_url}}"><img src='{{SITE_META.site_url}}{% static 'images/logo.png' %}' alt='{{ SITE_META.site_name }}' style="width: 60px; padding-bottom: 8px;" /></a>
+      </td>
+    </tr>
+  </table>
+
+  <p style="color: #999999; margin-top: 0; margin-bottom: 2em;">{{ SITE_META.site_desc }}</p>
+
+  <hr style="border-top: 1px solid #F4F4F4;">
+
+  <h3>Thanks, {{ user.username }}, for joining {{ SITE_META.site_name }}!</h3>
+
+  <p>With your account, you can now stay up-to-date on {{ SITE_META.site_name }} legislative actions, meetings, and the people involved. To get started, <a href="{{ host }}{% url 'notifications_activation' user.subscriptionprofile.activation_key %}{% if redirect %}?next={{ redirect }}{% endif %}">click here and confirm your account.</a></p>
+
+  <p>Enjoy the site, and thanks,</p>
+
+  <p><a href="{{SITE_META.site_url}}{% url 'about' %}#contact">The Councilmatic Team</a></p>
+
+  </span>
+</body>
+

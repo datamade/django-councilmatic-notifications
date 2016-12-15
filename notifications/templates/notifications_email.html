@@ -3,12 +3,25 @@
 <html lang="en">
 
 <body>
-  <span style="font-family: 'Trebuchet MS', Helvetica, sans-serif; color: #777777;">
+    <span style="font-family: 'Trebuchet MS', Helvetica, sans-serif;">
 
-    <h1>Notifications about your {{ CITY_NAME_SHORT }} Councilmatic Subscriptions</h1>
+    <table>
+      <tr>
+        <td>
+          <h1>{{ SITE_META.site_name }}</h1>
+        </td>
+        <td>
+           <a id='logo' href="{{ SITE_META.site_url}}"><img src='{{SITE_META.site_url}}{% static 'images/logo.png' %}' alt='{{ SITE_META.site_name }}' style="width: 60px; padding-bottom: 8px;" /></a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="color: #999999; margin-top: 0; margin-bottom: 2em;">{{ SITE_META.site_desc }}</p>
+
+    <hr style="border-top: 1px solid #F4F4F4;">
+
+    <h3>Notifications about your {{ CITY_NAME_SHORT }} Councilmatic Subscriptions</h3>
     <p style="font-size: 18px">{{ CITY_NAME_SHORT }} has updates! This email provides information about your subscriptions to council members, committee actions, committee events, bill searches, bill actions, and meetings.</p>
-
-    <hr style="border-top: 3px solid #dddddd;">
 
     <!-- Persons -->
     {% if person_updates %}
@@ -51,7 +64,7 @@
                              {% endif %}
                          </td>
                          <td>
-                             <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">Go to RSS</a>
+                             <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}"><img src='{{SITE_META.site_url}}{% static 'images/rss-feed.png' %}' alt='{{ SITE_META.site_name }}' /></a>
                          </td>
                      </tr>
                      {% endfor %}
@@ -93,7 +106,7 @@
                              </td>
                              <td>
                                  <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
-                                     Go to RSS
+                                     <img src='{{SITE_META.site_url}}{% static 'images/rss-feed.png' %}' alt='{{ SITE_META.site_name }}' />
                                  </a>
                              </td>
                          </tr>
@@ -176,7 +189,7 @@
                    </td>
                    <td>
                        <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
-                           Go to RSS
+                           <img src='{{SITE_META.site_url}}{% static 'images/rss-feed.png' %}' alt='{{ SITE_META.site_name }}' />
                        </a>
                    </td>
                </tr>
@@ -213,7 +226,7 @@
              </td>
              <td>
                  <a  style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
-                     Go to RSS
+                     <img src='{{SITE_META.site_url}}{% static 'images/rss-feed.png' %}' alt='{{ SITE_META.site_name }}' />
                  </a>
              </td>
          </tr>

@@ -20,8 +20,8 @@
 
     <hr style="border-top: 1px solid #F4F4F4;">
 
-    <h3>Notifications about your {{ CITY_NAME_SHORT }} Councilmatic Subscriptions</h3>
-    <p style="font-size: 18px">{{ CITY_NAME_SHORT }} has updates! This email provides information about your subscriptions to council members, committee actions, committee events, bill searches, bill actions, and meetings.</p>
+    <h3>Notifications about your Councilmatic Subscriptions</h3>
+    <p style="font-size: 18px">{{ SITE_META.site_name }} has updates! This email provides information about your subscriptions to council members, committee actions, committee events, bill searches, bill actions, and meetings.</p>
 
     <!-- Persons -->
     {% if person_updates %}
@@ -45,7 +45,6 @@
                          {% else %}
                              <th align='left'>Action</th>
                          {% endif %}
-                         <th align='left'></th>
                      </tr>
                  </thead>
                  <tbody>
@@ -62,9 +61,6 @@
                              {% else %}
                                  {{ bill.description }}
                              {% endif %}
-                         </td>
-                         <td>
-                             <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}"><img src='{{SITE_META.site_url}}{% static 'images/rss-feed.png' %}' alt='{{ SITE_META.site_name }}' /></a>
                          </td>
                      </tr>
                      {% endfor %}
@@ -90,7 +86,6 @@
                          <tr>
                              <th align='left'>Date</th>
                              <th align='left'>Action</th>
-                             <th align='left'></th>
                          </tr>
                      </thead>
                      <tbody>
@@ -102,11 +97,6 @@
                              <td>
                                  <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
                                      {{ action.description }}
-                                 </a>
-                             </td>
-                             <td>
-                                 <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
-                                     <img src='{{SITE_META.site_url}}{% static 'images/rss-feed.png' %}' alt='{{ SITE_META.site_name }}' />
                                  </a>
                              </td>
                          </tr>
@@ -175,7 +165,6 @@
            <tr>
                <th align='left'>Bill</th>
                <th align='left'>Description</th>
-               <th align='left'></th>
            </tr>
            </thead>
            <tbody>
@@ -186,11 +175,6 @@
                    </td>
                    <td>
                        {{ bill.description }}
-                   </td>
-                   <td>
-                       <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
-                           <img src='{{SITE_META.site_url}}{% static 'images/rss-feed.png' %}' alt='{{ SITE_META.site_name }}' />
-                       </a>
                    </td>
                </tr>
                        {% endfor %}
@@ -210,7 +194,6 @@
         <tr>
            <th align='left'>Bill</th>
            <th align='left'>Action</th>
-           <th align='left'></th>
         </tr>
       </thead>
       <tbody>
@@ -222,11 +205,6 @@
              <td>
                  <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
                      {{action.date|date:"M j, Y"}}: {{action.description}}
-                 </a>
-             </td>
-             <td>
-                 <a  style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
-                     <img src='{{SITE_META.site_url}}{% static 'images/rss-feed.png' %}' alt='{{ SITE_META.site_name }}' />
                  </a>
              </td>
          </tr>

@@ -5,6 +5,8 @@ import sys
 import random
 import hashlib
 
+from io import StringIO
+
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponseRedirect, HttpResponse
 from django.conf import settings
@@ -352,10 +354,13 @@ def events_unsubscribe(request):
 
 @login_required(login_url='/login/')
 def send_notifications(request):
+    notify_output = StringIO()
 
-    response = management.call_command('send_notifications', users=request.user.username)
+    management.call_command('send_notifications', users=request.user.username, stdout=notify_output)
 
-    if response is None:
+    # TODO: Make this more refined, using json.loads(), to show count of each subscription update
+
+    if notify_output is None:
         return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'false'}), content_type='application/json')
     else:
         return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'true'}), content_type='application/json')

@@ -164,7 +164,7 @@
 </div>
 
 <div class='row'>
-    <div class='pull-right col-sm-6' id='no_email_message' style="margin-top: 1em;"></div>
+    <div class='pull-right col-sm-6' id='email_message' style="margin-top: 1em;"></div>
 </div>
 
     <!-- XXX TODO: figure out why this "No Subscriptions" headers isn't working -->
@@ -210,6 +210,8 @@
         $('#trigger-send-notifications').on('click', function(e){
             $.when($.getJSON("{% url 'send-notifications' %}")).then(
                 function(data){
+                    console.log(data)
+
                     if (data.email_sent == 'false') {
 
                          var alertMsg = '<div class="alert alert-info" role="alert">' +
@@ -217,9 +219,16 @@
                                 '<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
                                 '</div>'
 
-                        $('#no_email_message').html(alertMsg);
+                        $('#email_message').html(alertMsg);
                     }
-                    console.log(data)
+                    else {
+                        var alertMsg = '<div class="alert alert-info" role="alert">' +
+                                '<strong>Email sent!</strong> Check your account to view all updates.' +
+                                '<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+                                '</div>'
+
+                        $('#email_message').html(alertMsg);
+                    }
                 }
             )
         });

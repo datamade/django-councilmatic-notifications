@@ -3,6 +3,7 @@ import json
 from collections import OrderedDict
 import itertools
 import requests
+from datetime import date
 
 import django_rq
 import pysolr
@@ -24,6 +25,7 @@ except KeyError:
     haystack_url = None
 
 class Command(BaseCommand):
+
     help = 'Send email notifications to subscribed users'
 
     def add_arguments(self, parser):
@@ -130,6 +132,18 @@ class Command(BaseCommand):
                                               person_updates=person_updates,
                                               committee_action_updates=committee_action_updates,
                                               committee_event_updates=committee_event_updates)
+
+        output = dict(user_id=user_subscriptions['user_id'],
+                      user_email=user_subscriptions['user_email'],
+                      bill_action_updates=bill_action_updates,
+                      bill_search_updates=bill_search_updates,
+                      person_updates=person_updates,
+                      committee_action_updates=committee_action_updates,
+                      committee_event_updates=committee_event_updates)
+
+        dthandler = lambda x: x.isoformat() if isinstance(x, date) else None
+
+        print(json.dumps(output, default=dthandler))
 
     def find_bill_action_updates(self, bill_ids):
 

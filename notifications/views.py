@@ -353,9 +353,12 @@ def events_unsubscribe(request):
 @login_required(login_url='/login/')
 def send_notifications(request):
 
-    management.call_command('send_notifications', users=request.user.username)
+    response = management.call_command('send_notifications', users=request.user.username)
 
-    return HttpResponse(json.dumps({'status': 'ok'}), content_type='application/json')
+    if response is None:
+        return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'false'}), content_type='application/json')
+    else:
+        return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'true'}), content_type='application/json')
 # The function worker_handle_notification_email() is invoked when the 'notifications_emails' queue (notification_emails_queue)
 # is woken up.
 

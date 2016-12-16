@@ -163,6 +163,10 @@
     </div>
 </div>
 
+<div class='row'>
+    <div class='pull-right col-sm-6' id='no_email_message' style="margin-top: 1em;"></div>
+</div>
+
     <!-- XXX TODO: figure out why this "No Subscriptions" headers isn't working -->
     <!--
     {% if not person_subscriptions and not committee_event_subscriptions and not committee_event_subscriptions and not bill_action_subscriptions and not bill_search_subscriptions and not events_subscriptions %}
@@ -206,10 +210,19 @@
         $('#trigger-send-notifications').on('click', function(e){
             $.when($.getJSON("{% url 'send-notifications' %}")).then(
                 function(data){
-                    console.log(data);
+                    if (data.email_sent == 'false') {
+
+                         var alertMsg = '<div class="alert alert-info" role="alert">' +
+                                '<strong>No email sent.</strong> Your subscriptions do not have updates at this time' +
+                                '<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+                                '</div>'
+
+                        $('#no_email_message').html(alertMsg);
+                    }
+                    console.log(data)
                 }
             )
-        })
+        });
 
     })
 

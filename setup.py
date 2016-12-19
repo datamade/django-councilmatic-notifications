@@ -9,7 +9,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='django-councilmatic-notifications',
-    version='0.1.8',
+    version='0.1.9',
     packages=['notifications'],
     include_package_data=True,
     license='MIT License',  # example license
@@ -19,7 +19,7 @@ setup(
     author='DataMade, LLC',
     author_email='info@datamade.us',
     install_requires=[
-        'django-councilmatic>=0.6.9,<0.7',
+        'django-councilmatic>=0.7,<0.8',
         'django-rq==0.9.3'
     ],
     classifiers=[

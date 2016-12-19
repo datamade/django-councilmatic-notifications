@@ -143,7 +143,7 @@ class Command(BaseCommand):
 
         dthandler = lambda x: x.isoformat() if isinstance(x, date) else None
 
-        print(json.dumps(output, default=dthandler))
+        return json.dumps(output, default=dthandler)
 
     def find_bill_action_updates(self, bill_ids):
 

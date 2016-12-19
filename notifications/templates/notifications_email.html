@@ -34,6 +34,7 @@
                  <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'person' person.slug %}">
                      {{person.name}} - {{ update_type }}
                  </a>
+
              </h4>
 
              <table id='subscriptions'>
@@ -50,7 +51,7 @@
                  <tbody>
                      {% for bill in person.bills %}
                      <tr>
-                         <td>
+                         <td style="white-space: nowrap;">
                              <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
                                  {{bill.identifier}}
                              </a>
@@ -200,12 +201,12 @@
       {% for bill, action in bill_action_updates %}
          <tr>
              <td align="left">
-                {{bill.identifier}}
+                <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
+                  {{bill.identifier}}
+                </a>
              </td>
              <td>
-                 <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
-                     {{action.date|date:"M j, Y"}}: {{action.description}}
-                 </a>
+                  {{action.date|date:"M j, Y"}}: {{action.description}}
              </td>
          </tr>
       {% endfor %}
@@ -213,6 +214,12 @@
     </table>
 
     {% endif %}
+
+    <br>
+
+    <hr style="border-top: 1px solid #F4F4F4;">
+
+    <p>Want to receive fewer or more notifications? <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'notifications_login' %}">Visit your account</a> and manage alert preferences.</p>
 
   </span>
 </body>

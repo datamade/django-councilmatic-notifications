@@ -159,7 +159,7 @@
 </div>
 <div class="row">
     <div class="col-sm-12 text-right">
-        <button class="btn btn-default" id="trigger-send-notifications">Send my notifications email</button>
+        <a href="#" class="btn btn-default" id="trigger-send-notifications">Send my notifications email</a>
     </div>
 </div>
 
@@ -209,15 +209,7 @@
         });
 
         $('#trigger-send-notifications').on('click', function(e){
-            $.getJSON("{% url 'send-notifications' %}", function(data) {
-                console.log(data)
-
-            })
-            .error(function(data) {
-              console.log("Error!");
-            });
-
-            $.when($.getJSON("{% url 'send-notifications' %}")).then(
+            $.when($.get("/send-notifications/")).then(
                 function(data){
                     if (data.email_sent == 'false') {
 
@@ -248,6 +240,7 @@
     function removeSubscription(row) {
 
         var del_url = row.attr("data-unsubscribe-url")
+        console.log(del_url)
 
         $.post(del_url, function(data){
             console.log("deleted "+del_url);

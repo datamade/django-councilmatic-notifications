@@ -148,8 +148,6 @@ class Command(BaseCommand):
                           committee_action_updates=committee_action_updates,
                           committee_event_updates=committee_event_updates)
 
-        print("here we gooo...")
-        print(output)
         if output is None:
             self.stdout.write('no email')
         else:

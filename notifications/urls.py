@@ -41,7 +41,7 @@ urlpatterns = [
         committee_actions_unsubscribe, name='committee_actions_unsubscribe'),
     url(r'^search_check_subscription/$', search_check_subscription, name='search_check_subscription'),
     url(r'^search_subscribe/$', search_subscribe, name='search_subscribe'),
-    url(r'^search_unsubscribe/$', search_unsubscribe, name='search_unsubscribe'),
+    url(r'^search_unsubscribe/(?P<subscription_id>[^/]+)/$', search_unsubscribe, name='search_unsubscribe'),
     url(r'^events/subscribe/$',
         events_subscribe, name='events_subscribe'),
     url(r'^events/unsubscribe/$',

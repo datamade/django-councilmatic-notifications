@@ -361,7 +361,7 @@ def send_notifications(request):
     results = notify_output.getvalue()
 
     # TODO: Make this more refined, using json.loads(), to show count of each subscription.
-    if results == 'no email':
+    if 'no email' in results:
         return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'false'}), content_type='application/json')
     else:
         return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'true'}), content_type='application/json')

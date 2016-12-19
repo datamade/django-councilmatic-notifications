@@ -197,21 +197,28 @@
         // 4. Bill Search Subscriptions
         // 5. Bill Actions Subscriptions
         // 6. Events Subscriptions
-        var row_to_delete = null
+
+        var rowToDelete = null
+
         $(".prompt-unsubscribe").click(function() {
-            console.log("prompt unsubscribe")
-            row_to_delete = $(this).parents(".subscription");
+            rowToDelete = $(this).parents(".subscription");
         });
+
         $("#trigger-unsubscribe").click(function(){
-            console.log(row_to_delete)
-            removeSubscription()
+            removeSubscription(rowToDelete);
         });
 
         $('#trigger-send-notifications').on('click', function(e){
+            $.getJSON("{% url 'send-notifications' %}", function(data) {
+                console.log(data)
+
+            })
+            .error(function(data) {
+              console.log("Error!");
+            });
+
             $.when($.getJSON("{% url 'send-notifications' %}")).then(
                 function(data){
-                    console.log(data)
-
                     if (data.email_sent == 'false') {
 
                          var alertMsg = '<div class="alert alert-info" role="alert">' +
@@ -238,13 +245,13 @@
 
 
     // remove the actual interest
-    function removeSubscription() {
+    function removeSubscription(row) {
 
-        var del_url = row_to_delete.attr("data-unsubscribe-url")
+        var del_url = row.attr("data-unsubscribe-url")
 
         $.post(del_url, function(data){
             console.log("deleted "+del_url);
-            row_to_delete.fadeOut();
+            row.fadeOut();
         }).error(function(){
             console.log("error deleting "+del_url)
         });

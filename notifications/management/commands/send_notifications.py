@@ -148,16 +148,14 @@ class Command(BaseCommand):
                           committee_action_updates=committee_action_updates,
                           committee_event_updates=committee_event_updates)
 
-
-
-        if output:
-
+        print("here we gooo...")
+        print(output)
+        if output is None:
+            self.stdout.write('no email')
+        else:
             dthandler = lambda x: x.isoformat() if isinstance(x, date) else None
 
             self.stdout.write(json.dumps(output, default=dthandler))
-
-        else:
-            self.stdout.write('no email')
 
 
 

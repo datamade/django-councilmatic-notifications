@@ -358,9 +358,10 @@ def send_notifications(request):
 
     management.call_command('send_notifications', users=request.user.username, stdout=notify_output)
 
-    # TODO: Make this more refined, using json.loads(), to show count of each subscription update
+    results = notify_output.getvalue()
 
-    if notify_output is None:
+    # TODO: Make this more refined, using json.loads(), to show count of each subscription.
+    if results == 'no email':
         return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'false'}), content_type='application/json')
     else:
         return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'true'}), content_type='application/json')

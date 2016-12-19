@@ -195,6 +195,13 @@ class SubscriptionsManageView(LoginRequiredMixin, TemplateView):
         context['bill_action_subscriptions'] = self.request.user.billactionsubscriptions.all()
         context['events_subscriptions'] = self.request.user.eventssubscriptions.all()
 
+        obj_copy = context.copy()
+        del obj_copy['view']
+        if any([len(s) != 0 for s in obj_copy.values()]):
+            context['subscriptions'] = ''
+        else:
+            context['subscriptions'] = None
+
         return context
 
 @login_required(login_url='/login/')

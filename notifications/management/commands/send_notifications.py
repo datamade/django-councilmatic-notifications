@@ -3,6 +3,7 @@ import json
 from collections import OrderedDict
 import itertools
 import requests
+from datetime import date
 
 import django_rq
 import pysolr
@@ -24,19 +25,20 @@ except KeyError:
     haystack_url = None
 
 class Command(BaseCommand):
+
     help = 'Send email notifications to subscribed users'
-    
+
     def add_arguments(self, parser):
         parser.add_argument(
             '--users',
             default='all',
             help='Comma separated list of usernames to send notifications to.'
         )
-    
+
     def handle(self, *args, **options):
-        
-        subscribed_users = ''' 
-            SELECT 
+
+        subscribed_users = '''
+            SELECT
               u.id AS user_id,
               MAX(u.email) as user_email,
               array_agg(DISTINCT bas.bill_id) AS bill_action_ids,
@@ -61,40 +63,40 @@ class Command(BaseCommand):
                    OR ces.committee_id IS NOT NULL
                    OR ps.person_id IS NOT NULL)
         '''
-        
+
         q_args = []
 
         if options['users'] != 'all':
             users = tuple(options['users'].split(','))
             subscribed_users = '{} AND u.username IN %s'.format(subscribed_users)
             q_args.append(users)
-            
+
 
         subscribed_users = '{} GROUP BY u.id'.format(subscribed_users)
         cursor = connection.cursor()
         cursor.execute(subscribed_users, q_args)
         columns = [c[0] for c in cursor.description]
-        
+
         for row in cursor:
             user_subscriptions = dict(zip(columns, row))
-            
+
             bill_action_updates = []
             bill_search_updates = []
             committee_action_updates = []
             committee_event_updates = []
             person_updates = []
-            
+
             bill_action_ids = [i for i in user_subscriptions['bill_action_ids'] if i]
             bill_search_params = [i for i in user_subscriptions['bill_search_params'] if i]
             committee_action_ids = [i for i in user_subscriptions['committee_action_ids'] if i]
             committee_event_ids = [i for i in user_subscriptions['committee_event_ids'] if i]
             person_ids = [i for i in user_subscriptions['person_ids'] if i]
-            
+
             send_notification = False
 
             if bill_action_ids:
                 bill_action_updates = self.find_bill_action_updates(bill_action_ids)
-                
+
                 if bill_action_updates:
                     send_notification = True
 
@@ -115,13 +117,13 @@ class Command(BaseCommand):
 
                 if committee_event_updates:
                     send_notification = True
-            
+
             if person_ids:
                 person_updates = self.find_person_updates(person_ids)
 
                 if person_updates:
                     send_notification = True
-            
+
             if send_notification:
                 send_notification_email.delay(user_id=user_subscriptions['user_id'],
                                               user_email=user_subscriptions['user_email'],
@@ -131,9 +133,21 @@ class Command(BaseCommand):
                                               committee_action_updates=committee_action_updates,
                                               committee_event_updates=committee_event_updates)
 
+        output = dict(user_id=user_subscriptions['user_id'],
+                      user_email=user_subscriptions['user_email'],
+                      bill_action_updates=bill_action_updates,
+                      bill_search_updates=bill_search_updates,
+                      person_updates=person_updates,
+                      committee_action_updates=committee_action_updates,
+                      committee_event_updates=committee_event_updates)
+
+        dthandler = lambda x: x.isoformat() if isinstance(x, date) else None
+
+        return json.dumps(output, default=dthandler)
+
     def find_bill_action_updates(self, bill_ids):
-        
-        new_actions = ''' 
+
+        new_actions = '''
             SELECT DISTINCT ON (bill.ocd_id)
               bill.slug AS bill_slug,
               bill.identifier AS bill_identifier,
@@ -147,14 +161,14 @@ class Command(BaseCommand):
               ON new.bill_id = action.bill_id
             WHERE new.bill_id IN %s
         '''
-        
+
         cursor = connection.cursor()
         cursor.execute(new_actions, [tuple(bill_ids)])
-        
+
         bill_action_updates = []
 
         for row in cursor:
-            
+
             bill = {
                 'slug': row[0],
                 'identifier': row[1],
@@ -166,22 +180,22 @@ class Command(BaseCommand):
             }
 
             bill_action_updates.append((bill, action))
-            
+
         return bill_action_updates
 
     def find_bill_search_updates(self, search_params):
-        
+
         if not haystack_url:
             self.stdout.write(self.style.ERROR('Solr is not configured so no search notifications will be sent'))
             return []
-        
+
         search_updates = []
-        
+
         cursor = connection.cursor()
 
         for params in search_params:
             query_params = {
-                'q': params['term'], 
+                'q': params['term'],
                 'fq': [],
                 'wt': 'json'
             }
@@ -189,12 +203,12 @@ class Command(BaseCommand):
             for facet, values in params['facets'].items():
                 for value in values:
                     query_params['fq'].append('{0}:{1}'.format(facet, value))
-            
+
             results = requests.get('{}/select'.format(haystack_url), params=query_params)
-            
+
             ocd_ids = tuple(r['ocd_id'] for r in results.json()['response']['docs'])
-            
-            new_bills = ''' 
+
+            new_bills = '''
                 SELECT DISTINCT ON (bill.ocd_id)
                   bill.slug AS bill_slug,
                   bill.identifier AS bill_identifier,
@@ -204,9 +218,9 @@ class Command(BaseCommand):
                   ON new.ocd_id = bill.ocd_id
                 WHERE new.ocd_id IN %s
             '''
-            
+
             cursor.execute(new_bills, [ocd_ids])
-            
+
             bills = []
 
             for row in cursor:
@@ -222,14 +236,14 @@ class Command(BaseCommand):
                     'params': params,
                     'bills': bills
                 })
-        
+
         return search_updates
-    
+
     def find_person_updates(self, person_ids):
         # If person sponsors something new
         # If bill sponsored by person has new or updated action
-        
-        new_sponsorships = ''' 
+
+        new_sponsorships = '''
             SELECT DISTINCT ON (person.ocd_id, bill.ocd_id)
               person.name,
               person.slug,
@@ -244,12 +258,12 @@ class Command(BaseCommand):
             WHERE new.person_id IN %s
         '''
 
-        new_actions = ''' 
+        new_actions = '''
             SELECT DISTINCT ON (person.ocd_id, bill.ocd_id)
               person.name,
               person.slug,
               bill.identifier,
-              bill.slug, 
+              bill.slug,
               bill.description,
               action.description,
               action.date
@@ -264,9 +278,9 @@ class Command(BaseCommand):
               ON sponsor.person_id = person.ocd_id
             WHERE person.ocd_id IN %s
         '''
-        
+
         person_updates = []
-        
+
         cursor = connection.cursor()
         cursor.execute(new_sponsorships, [tuple(person_ids)])
 
@@ -301,22 +315,22 @@ class Command(BaseCommand):
                 'update_type': 'New Action'
             }
             person_updates.append((person, bill))
-        
+
         update_groups = []
 
         outer_grouper = lambda x: x[0]['slug']
         person_updates = sorted(person_updates, key=outer_grouper)
-        
+
         inner_grouper = lambda x: x[1]['update_type']
 
         for slug, group in itertools.groupby(person_updates, key=outer_grouper):
             bill_group = {}
-            
+
             group = sorted(group, key=inner_grouper)
 
             for update_type, inner_group in itertools.groupby(group, key=inner_grouper):
                 bill_group[update_type] = {}
-                
+
                 for person, bill in inner_group:
                     bill_group[update_type].update(person)
 
@@ -324,15 +338,15 @@ class Command(BaseCommand):
                         bill_group[update_type]['bills'].append(bill)
                     except KeyError:
                         bill_group[update_type]['bills'] = [bill]
-            
+
             update_groups.append(bill_group)
-        
+
         return update_groups
-    
+
     def find_committee_action_updates(self, committee_ids):
         # New actions taken by a committee on a bill
 
-        new_actions = ''' 
+        new_actions = '''
             SELECT DISTINCT ON (committee.ocd_id, bill.ocd_id, action.id)
               committee.name,
               committee.slug,
@@ -345,7 +359,7 @@ class Command(BaseCommand):
             FROM councilmatic_core_organization AS committee
             JOIN councilmatic_core_action AS action
               ON committee.ocd_id = action.organization_id
-            JOIN councilmatic_core_bill AS bill 
+            JOIN councilmatic_core_bill AS bill
               ON action.bill_id = bill.ocd_id
             JOIN new_action AS new
               ON bill.ocd_id = new.bill_id
@@ -355,29 +369,29 @@ class Command(BaseCommand):
                      action.id,
                      action.order DESC
         '''
-        
+
         cursor = connection.cursor()
         cursor.execute(new_actions, [tuple(committee_ids)])
-        
+
         committee_updates = []
-        
+
         outer_grouper = lambda x: x[1]
         inner_grouper = lambda x: x[3]
         groups = sorted(cursor, key=outer_grouper)
 
         for committee_slug, group in itertools.groupby(groups, key=outer_grouper):
-            
+
             group = sorted(group, key=inner_grouper)
-            
+
             committee_group = {
                 'name': group[0][0],
                 'slug': group[0][1],
                 'bills': []
             }
-            
-            
+
+
             for bill_slug, bill_group in itertools.groupby(group, key=inner_grouper):
-                
+
                 bill_group = list(bill_group)
 
                 bill = {
@@ -386,24 +400,24 @@ class Command(BaseCommand):
                     'description': bill_group[0][4],
                     'actions': []
                 }
-                
+
 
                 for row in sorted(bill_group, key=lambda x: x[7], reverse=True):
                     action = {
                         'description': row[5],
                         'date': row[6]
                     }
-                    
+
                     bill['actions'].append(action)
-                
+
                 committee_group['bills'].append(bill)
-                
+
             committee_updates.append(committee_group)
 
         return committee_updates
 
     def find_committee_event_updates(self, committee_ids):
-        new_events = ''' 
+        new_events = '''
             SELECT DISTINCT ON (committee.ocd_id, event.ocd_id)
               committee.name,
               committee.slug,
@@ -426,7 +440,7 @@ class Command(BaseCommand):
         columns = [c[0] for c in cursor.description]
 
         updates = []
-        
+
         grouper = lambda x: x[1]
         event_groups = sorted(cursor, key=grouper)
 
@@ -438,13 +452,13 @@ class Command(BaseCommand):
                 'slug': group[0][1],
                 'events': []
             }
-            
+
             for row in group:
                 event = dict(zip(columns[2:], row[2:]))
                 committee['events'].append(event)
-            
-            committee['events'] = sorted(committee['events'], 
-                                         key=lambda x: x['start_time'], 
+
+            committee['events'] = sorted(committee['events'],
+                                         key=lambda x: x['start_time'],
                                          reverse=True)
 
             updates.append(committee)
@@ -459,9 +473,9 @@ def send_notification_email(user_id=None,
                             person_updates=[],
                             committee_action_updates=[],
                             committee_event_updates=[]):
-    
+
     context = {
-        # 'user': user, 
+        # 'user': user,
         'SITE_META': settings.SITE_META,
         'CITY_VOCAB': settings.CITY_VOCAB,
         'bill_action_updates': bill_action_updates,
@@ -479,9 +493,9 @@ def send_notification_email(user_id=None,
     text_content = text_template.render(context)
     subject = '{0} Updates!'.format(settings.SITE_META['site_name'])
 
-    msg = EmailMultiAlternatives(subject, 
-                                 text_content, 
-                                 settings.EMAIL_HOST_USER, 
+    msg = EmailMultiAlternatives(subject,
+                                 text_content,
+                                 settings.EMAIL_HOST_USER,
                                  [user_email])
 
     msg.attach_alternative(html_content, 'text/html')

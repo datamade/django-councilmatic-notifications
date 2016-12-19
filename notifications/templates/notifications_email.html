@@ -3,12 +3,25 @@
 <html lang="en">
 
 <body>
-  <span style="font-family: 'Trebuchet MS', Helvetica, sans-serif; color: #777777;">
+    <span style="font-family: 'Trebuchet MS', Helvetica, sans-serif;">
 
-    <h1>Notifications about your {{ CITY_NAME_SHORT }} Councilmatic Subscriptions</h1>
-    <p style="font-size: 18px">{{ CITY_NAME_SHORT }} has updates! This email provides information about your subscriptions to council members, committee actions, committee events, bill searches, bill actions, and meetings.</p>
+    <table>
+      <tr>
+        <td>
+          <h1>{{ SITE_META.site_name }}</h1>
+        </td>
+        <td>
+           <a id='logo' href="{{ SITE_META.site_url}}"><img src='{{SITE_META.site_url}}{% static 'images/logo.png' %}' alt='{{ SITE_META.site_name }}' style="width: 60px; padding-bottom: 8px;" /></a>
+        </td>
+      </tr>
+    </table>
 
-    <hr style="border-top: 3px solid #dddddd;">
+    <p style="color: #999999; margin-top: 0; margin-bottom: 2em;">{{ SITE_META.site_desc }}</p>
+
+    <hr style="border-top: 1px solid #F4F4F4;">
+
+    <h3>Notifications about your Councilmatic Subscriptions</h3>
+    <p style="font-size: 18px">{{ SITE_META.site_name }} has updates! This email provides information about your subscriptions to council members, committee actions, committee events, bill searches, bill actions, and meetings.</p>
 
     <!-- Persons -->
     {% if person_updates %}
@@ -21,6 +34,7 @@
                  <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'person' person.slug %}">
                      {{person.name}} - {{ update_type }}
                  </a>
+
              </h4>
 
              <table id='subscriptions'>
@@ -32,13 +46,12 @@
                          {% else %}
                              <th align='left'>Action</th>
                          {% endif %}
-                         <th align='left'></th>
                      </tr>
                  </thead>
                  <tbody>
                      {% for bill in person.bills %}
                      <tr>
-                         <td>
+                         <td style="white-space: nowrap;">
                              <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
                                  {{bill.identifier}}
                              </a>
@@ -49,9 +62,6 @@
                              {% else %}
                                  {{ bill.description }}
                              {% endif %}
-                         </td>
-                         <td>
-                             <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">Go to RSS</a>
                          </td>
                      </tr>
                      {% endfor %}
@@ -77,7 +87,6 @@
                          <tr>
                              <th align='left'>Date</th>
                              <th align='left'>Action</th>
-                             <th align='left'></th>
                          </tr>
                      </thead>
                      <tbody>
@@ -89,11 +98,6 @@
                              <td>
                                  <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
                                      {{ action.description }}
-                                 </a>
-                             </td>
-                             <td>
-                                 <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
-                                     Go to RSS
                                  </a>
                              </td>
                          </tr>
@@ -162,7 +166,6 @@
            <tr>
                <th align='left'>Bill</th>
                <th align='left'>Description</th>
-               <th align='left'></th>
            </tr>
            </thead>
            <tbody>
@@ -173,11 +176,6 @@
                    </td>
                    <td>
                        {{ bill.description }}
-                   </td>
-                   <td>
-                       <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
-                           Go to RSS
-                       </a>
                    </td>
                </tr>
                        {% endfor %}
@@ -197,24 +195,18 @@
         <tr>
            <th align='left'>Bill</th>
            <th align='left'>Action</th>
-           <th align='left'></th>
         </tr>
       </thead>
       <tbody>
       {% for bill, action in bill_action_updates %}
          <tr>
              <td align="left">
-                {{bill.identifier}}
+                <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
+                  {{bill.identifier}}
+                </a>
              </td>
              <td>
-                 <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
-                     {{action.date|date:"M j, Y"}}: {{action.description}}
-                 </a>
-             </td>
-             <td>
-                 <a  style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail_action_feed' bill.slug %}" title="RSS feed for Actions for {{bill.identifier}}">
-                     Go to RSS
-                 </a>
+                  {{action.date|date:"M j, Y"}}: {{action.description}}
              </td>
          </tr>
       {% endfor %}
@@ -222,6 +214,12 @@
     </table>
 
     {% endif %}
+
+    <br>
+
+    <hr style="border-top: 1px solid #F4F4F4;">
+
+    <p>Want to receive fewer or more notifications? <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'notifications_login' %}">Visit your account</a> and manage alert preferences.</p>
 
   </span>
 </body>

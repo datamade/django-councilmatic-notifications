@@ -24,8 +24,6 @@
 
     {% endfor %}
 
-    {% endif %}
-
     <!-- Committee Actions -->
     {% if committee_action_updates %}
          {% for committee in committee_action_updates %}

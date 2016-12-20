@@ -4,6 +4,7 @@ from collections import OrderedDict
 import itertools
 import requests
 from datetime import date
+from io import StringIO
 
 import django_rq
 import pysolr
@@ -150,11 +151,10 @@ class Command(BaseCommand):
 
         if output is None:
             self.stdout.write('no email')
+
         else:
             dthandler = lambda x: x.isoformat() if isinstance(x, date) else None
-
             self.stdout.write(json.dumps(output, default=dthandler))
-
 
 
     def find_bill_action_updates(self, bill_ids):

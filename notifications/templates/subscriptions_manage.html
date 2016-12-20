@@ -25,6 +25,7 @@
                 </tr>
             </thead>
             <tbody>
+
                 {% if subscriptions %}
 
                 {% for subscription in person_subscriptions %}
@@ -138,11 +139,14 @@
                 </tr>
                 {% endfor %}
 
+
                 {% else %}
                 <tr>
                     <td>You do not have any subscriptions. View pages for <a href="{% url 'council_members' %}">{{ CITY_VOCAB.COUNCIL_MEMBERS | lower }}</a>, <a href="/search">legislation</a>, <a href="{% url 'committees' %}">committees</a>, and <a href="{% url 'events' %}">{{ CITY_VOCAB.EVENTS | lower }}</a> to add alerts!</td>
                 </tr>
                 {% endif %}
+
+
                 </div>
             </tbody>
         </table>

@@ -198,7 +198,7 @@ class SubscriptionsManageView(LoginRequiredMixin, TemplateView):
         obj_copy = context.copy()
         del obj_copy['view']
         if any([len(s) != 0 for s in obj_copy.values()]):
-            context['subscriptions'] = ''
+            context['subscriptions'] = 'Yes, subscriptions.'
         else:
             context['subscriptions'] = None
 
@@ -356,9 +356,10 @@ def events_unsubscribe(request):
 
 @login_required(login_url='/login/')
 def send_notifications(request):
-    notify_output = StringIO
+    notify_output = StringIO()
     management.call_command('send_notifications', users=request.user.username, stdout=notify_output)
     results = notify_output.getvalue()
+
     timestamp = json.dumps(datetime.datetime.now().isoformat())
 
     # TODO: Make this more refined, using json.loads(), to show count of each subscription.

@@ -195,6 +195,13 @@ class SubscriptionsManageView(LoginRequiredMixin, TemplateView):
         context['bill_action_subscriptions'] = self.request.user.billactionsubscriptions.all()
         context['events_subscriptions'] = self.request.user.eventssubscriptions.all()
 
+        obj_copy = context.copy()
+        del obj_copy['view']
+        if any([len(s) != 0 for s in obj_copy.values()]):
+            context['subscriptions'] = ''
+        else:
+            context['subscriptions'] = None
+
         return context
 
 @login_required(login_url='/login/')
@@ -297,22 +304,17 @@ def search_subscribe(request):
     return HttpResponse('Subscribed to search for: %s.' % q)
 
 @login_required(login_url='/login/')
-def search_unsubscribe(request):
-    q = request.POST.get('query')
-    selected_facets = request.POST.get('selected_facets')
-    selected_facets_json = json.loads(selected_facets)
-    search_params = {'term': q, 'facets': selected_facets_json}
-
+def search_unsubscribe(request, subscription_id):
     try:
         bss = BillSearchSubscription.objects.get(user=request.user,
-                                                 search_params__exact=search_params)
+                                                 id=subscription_id)
     except ObjectDoesNotExist:
         response = HttpResponse('This search subscription does not exist.')
         response.status_code = 500
         return response
 
     bss.delete()
-    return HttpResponse('Unsubscribed from search for: %s.' % q)
+    return HttpResponse('Unsubscribed from bill search')
 
 @login_required(login_url='/login/')
 def search_check_subscription(request):
@@ -354,16 +356,16 @@ def events_unsubscribe(request):
 
 @login_required(login_url='/login/')
 def send_notifications(request):
-    notify_output = StringIO()
-
+    notify_output = StringIO
     management.call_command('send_notifications', users=request.user.username, stdout=notify_output)
+    results = notify_output.getvalue()
+    timestamp = json.dumps(datetime.datetime.now().isoformat())
 
-    # TODO: Make this more refined, using json.loads(), to show count of each subscription update
-
-    if notify_output is None:
-        return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'false'}), content_type='application/json')
+    # TODO: Make this more refined, using json.loads(), to show count of each subscription.
+    if 'no email' in results:
+        return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'false', 'date': timestamp}), content_type='application/json')
     else:
-        return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'true'}), content_type='application/json')
+        return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'true', 'date': timestamp}), content_type='application/json')
 # The function worker_handle_notification_email() is invoked when the 'notifications_emails' queue (notification_emails_queue)
 # is woken up.
 

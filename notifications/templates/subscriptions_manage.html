@@ -25,6 +25,8 @@
                 </tr>
             </thead>
             <tbody>
+                {% if subscriptions %}
+
                 {% for subscription in person_subscriptions %}
                 <tr class="subscription person" data-unsubscribe-url="/person/{{subscription.person.slug}}/unsubscribe/">
                     <td>
@@ -135,6 +137,12 @@
                     </td>
                 </tr>
                 {% endfor %}
+
+                {% else %}
+                <tr>
+                    <td>You do not have any subscriptions. View pages for <a href="{% url 'council_members' %}">{{ CITY_VOCAB.COUNCIL_MEMBERS | lower }}</a>, <a href="/search">legislation</a>, <a href="{% url 'committees' %}">committees</a>, and <a href="{% url 'events' %}">{{ CITY_VOCAB.EVENTS | lower }}</a> to add alerts!</td>
+                </tr>
+                {% endif %}
                 </div>
             </tbody>
         </table>
@@ -159,24 +167,13 @@
 </div>
 <div class="row">
     <div class="col-sm-12 text-right">
-        <button class="btn btn-default" id="trigger-send-notifications">Send my notifications email</button>
+        <a href="#" class="btn btn-default" id="trigger-send-notifications">Send my notifications email</a>
     </div>
 </div>
 
 <div class='row'>
     <div class='pull-right col-sm-6' id='email_message' style="margin-top: 1em;"></div>
 </div>
-
-    <!-- XXX TODO: figure out why this "No Subscriptions" headers isn't working -->
-    <!--
-    {% if not person_subscriptions and not committee_event_subscriptions and not committee_event_subscriptions and not bill_action_subscriptions and not bill_search_subscriptions and not events_subscriptions %}
-     <div class="row-fluid">
-             <div class="col-sm-8 table-col">
-             <h3>No Subscriptions Found.</h3>
-         </div>
-     </div>
-    {% endif %}
-    -->
 
 
 {% endblock %}
@@ -197,21 +194,20 @@
         // 4. Bill Search Subscriptions
         // 5. Bill Actions Subscriptions
         // 6. Events Subscriptions
-        var row_to_delete = null
+
+        var rowToDelete = null
+
         $(".prompt-unsubscribe").click(function() {
-            console.log("prompt unsubscribe")
-            row_to_delete = $(this).parents(".subscription");
+            rowToDelete = $(this).parents(".subscription");
         });
+
         $("#trigger-unsubscribe").click(function(){
-            console.log(row_to_delete)
-            removeSubscription()
+            removeSubscription(rowToDelete);
         });
 
         $('#trigger-send-notifications').on('click', function(e){
-            $.when($.getJSON("{% url 'send-notifications' %}")).then(
+            $.when($.get("/send-notifications/")).then(
                 function(data){
-                    console.log(data)
-
                     if (data.email_sent == 'false') {
 
                          var alertMsg = '<div class="alert alert-info" role="alert">' +
@@ -238,13 +234,14 @@
 
 
     // remove the actual interest
-    function removeSubscription() {
+    function removeSubscription(row) {
 
-        var del_url = row_to_delete.attr("data-unsubscribe-url")
+        var del_url = row.attr("data-unsubscribe-url")
+        console.log(del_url)
 
         $.post(del_url, function(data){
             console.log("deleted "+del_url);
-            row_to_delete.fadeOut();
+            row.fadeOut();
         }).error(function(){
             console.log("error deleting "+del_url)
         });

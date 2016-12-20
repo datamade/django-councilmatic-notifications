@@ -77,14 +77,23 @@ class Command(BaseCommand):
         cursor.execute(subscribed_users, q_args)
         columns = [c[0] for c in cursor.description]
 
+        bill_action_updates = []
+        bill_search_updates = []
+        committee_action_updates = []
+        committee_event_updates = []
+        person_updates = []
+
+        send_notification = False
+        output = None
+
         for row in cursor:
             user_subscriptions = dict(zip(columns, row))
 
-            bill_action_updates = []
-            bill_search_updates = []
-            committee_action_updates = []
-            committee_event_updates = []
-            person_updates = []
+            # bill_action_updates = []
+            # bill_search_updates = []
+            # committee_action_updates = []
+            # committee_event_updates = []
+            # person_updates = []
 
             bill_action_ids = [i for i in user_subscriptions['bill_action_ids'] if i]
             bill_search_params = [i for i in user_subscriptions['bill_search_params'] if i]
@@ -92,7 +101,7 @@ class Command(BaseCommand):
             committee_event_ids = [i for i in user_subscriptions['committee_event_ids'] if i]
             person_ids = [i for i in user_subscriptions['person_ids'] if i]
 
-            send_notification = False
+            # send_notification = False
 
             if bill_action_ids:
                 bill_action_updates = self.find_bill_action_updates(bill_action_ids)
@@ -133,17 +142,20 @@ class Command(BaseCommand):
                                               committee_action_updates=committee_action_updates,
                                               committee_event_updates=committee_event_updates)
 
-        output = dict(user_id=user_subscriptions['user_id'],
-                      user_email=user_subscriptions['user_email'],
-                      bill_action_updates=bill_action_updates,
-                      bill_search_updates=bill_search_updates,
-                      person_updates=person_updates,
-                      committee_action_updates=committee_action_updates,
-                      committee_event_updates=committee_event_updates)
+                output = dict(bill_action_updates=bill_action_updates,
+                          bill_search_updates=bill_search_updates,
+                          person_updates=person_updates,
+                          committee_action_updates=committee_action_updates,
+                          committee_event_updates=committee_event_updates)
 
-        dthandler = lambda x: x.isoformat() if isinstance(x, date) else None
+        if output is None:
+            self.stdout.write('no email')
+        else:
+            dthandler = lambda x: x.isoformat() if isinstance(x, date) else None
 
-        return json.dumps(output, default=dthandler)
+            self.stdout.write(json.dumps(output, default=dthandler))
+
+
 
     def find_bill_action_updates(self, bill_ids):
 

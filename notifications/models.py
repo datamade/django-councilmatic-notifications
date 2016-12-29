@@ -19,12 +19,12 @@ class Subscription(models.Model):
     #    5) BillActionSubscription: actions on individual bills
     #    6) EventsSubscription: all events (e.g. https://nyc.councilmatic.org/events/ )
 
-    user = models.ForeignKey(User, related_name='%(class)ss', db_column='user_id')    
+    user = models.ForeignKey(User, related_name='%(class)ss', db_column='user_id')
     last_datetime_updated = models.DateTimeField(auto_now=True) #XXX
 
     # Make this an abstract base class
     class Meta:
-        abstract = True    
+        abstract = True
     pass
 
 
@@ -34,13 +34,13 @@ class PersonSubscription(Subscription):
 
 class CommitteeActionSubscription(Subscription):
     committee = models.ForeignKey(Organization, related_name = 'subscriptions_actions')
-    
+
 class CommitteeEventSubscription(Subscription):
     committee = models.ForeignKey(Organization, related_name = 'subscriptions_events')
-    
+
 class BillSearchSubscription(Subscription):
-    search_params = JSONField(db_index=True, null=True) 
-    
+    search_params = JSONField(db_index=True, null=True)
+
 class BillActionSubscription(Subscription):
     bill = models.ForeignKey(Bill, related_name = 'subscriptions')
 

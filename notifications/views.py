@@ -42,6 +42,7 @@ from notifications.models import PersonSubscription, BillActionSubscription, \
 
 from notifications.utils import send_signup_email
 
+
 app_timezone = pytz.timezone(settings.TIME_ZONE)
 
 class CouncilmaticUserCreationForm(UserCreationForm):
@@ -370,5 +371,3 @@ def send_notifications(request):
         return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'true', 'date': timestamp}), content_type='application/json')
 # The function worker_handle_notification_email() is invoked when the 'notifications_emails' queue (notification_emails_queue)
 # is woken up.
-
-

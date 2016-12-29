@@ -1,0 +1,9 @@
+{% load i18n %}{% blocktrans %}Hi, {{ username }}.{% endblocktrans %}
+
+We received a request to reset your Councilmatic password. {% trans "Update your password by following this link:" %} http{% if secure %}s{% endif %}://{{ site.domain }}{% url "password_reset_reset" token %}
+
+{% trans "If you did not request a new password or you changed your mind, then simply ignore this email, and your password will not change." %}
+
+Enjoy the site, and thanks,
+
+The Councilmatic Team

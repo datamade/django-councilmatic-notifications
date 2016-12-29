@@ -50,4 +50,6 @@ urlpatterns = [
         send_notifications, name='send-notifications'),
     # django-rq: https://github.com/ui/django-rq
     url(r'^django-rq/', include('django_rq.urls')),
+
+    url(r'', include('password_reset.urls'))
 ]

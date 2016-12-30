@@ -21,7 +21,7 @@ from django.core import management
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm, PasswordResetForm
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User # XXX TODO: migrate to custom User model https://docs.djangoproject.com/en/1.9/topics/auth/customizing/ http://blog.mathandpencil.com/replacing-django-custom-user-models-in-an-existing-application/ https://www.caktusgroup.com/blog/2013/08/07/migrating-custom-user-model-django/
@@ -41,6 +41,7 @@ from notifications.models import PersonSubscription, BillActionSubscription, \
     BillSearchSubscription, EventsSubscription, SubscriptionProfile
 
 from notifications.utils import send_signup_email
+
 
 app_timezone = pytz.timezone(settings.TIME_ZONE)
 
@@ -370,5 +371,4 @@ def send_notifications(request):
         return HttpResponse(json.dumps({'status': 'ok', 'email_sent': 'true', 'date': timestamp}), content_type='application/json')
 # The function worker_handle_notification_email() is invoked when the 'notifications_emails' queue (notification_emails_queue)
 # is woken up.
-
 

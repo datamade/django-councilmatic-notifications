@@ -10,11 +10,24 @@
         <p>{% blocktrans %}Sorry, this password reset link is invalid. You can still <a href="{{ recovery_url }}">request a new one</a>.{% endblocktrans %}</p>
       {% else %}
         <h2>Choose your new password</h2>
-        <form method="post" action="{% url "password_reset_reset" token %}">
+
+        <form method="post" action="{% url 'password_reset_reset' token %}">
           {% csrf_token %}
-          {{ form.as_p }}
-          <p><input class="btn btn-default" type="submit" value="{% trans "Set new password" %}"></p>
+          <fieldset>{% for field in form %}
+            {% if not field.is_hidden %}
+              <div class="fieldWrapper{% if forloop.first %} first{% endif %}{% if forloop.last %} last{% endif %}">
+                <p><strong>{{ field.label }}:</strong></p>
+                {{ field }}
+                {{ field.errors }}
+              </div></br>
+            {% else %}
+              {{ field }}
+            {% endif %}
+          {% endfor %}</fieldset>
+          <p><input class="btn btn-default" type="submit" value="{% trans 'Set password' %}"></p>
         </form>
+
+
       {% endif %}
     </div>
   </div>

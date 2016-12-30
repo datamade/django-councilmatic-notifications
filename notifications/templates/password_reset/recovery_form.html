@@ -11,10 +11,10 @@
     <div class='well col-md-6 col-md-offset-3'>
       <h2>Reset your password</h2>
       <p>Enter your username, and you will receive an email with a link to change your password.</p>
-      <form method="post" action="{{ url }}">
-        {% csrf_token %}
 
         <form method="post" action="{% url "password_reset_recover" %}">
+
+          {% csrf_token %}
 
           <fieldset>{% for field in form %}
             {% if not field.is_hidden %}
@@ -30,8 +30,6 @@
           </br>
           <p><input class="btn btn-default" type="submit" value="{% trans 'Send email' %}"></p>
         </form>
-
-      </form>
 
     </div>
   </div>

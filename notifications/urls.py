@@ -1,5 +1,6 @@
 from django.conf.urls import include, url
 from django.views.decorators.cache import never_cache
+from django.contrib.auth.views import password_change, password_change_done
 
 from notifications.views import notifications_login, notifications_logout, \
     notifications_signup, notifications_activation, notifications_account_settings, \
@@ -51,5 +52,12 @@ urlpatterns = [
     # django-rq: https://github.com/ui/django-rq
     url(r'^django-rq/', include('django_rq.urls')),
 
-    url(r'', include('password_reset.urls'))
+    # URLs for password resets and changes.
+    url(r'', include('password_reset.urls')),
+    url(r'^password/change/$', password_change, {
+        'template_name': 'password_change_form.html'},
+        name='password_change'),
+    url(r'^password/change/done/$', password_change_done,
+        {'template_name': 'password_change_done.html'},
+        name='password_change_done'),
 ]

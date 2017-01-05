@@ -450,6 +450,7 @@ class Command(BaseCommand):
 
     def find_committee_event_updates(self, committee_ids):
         new_events = '''
+            SELECT * FROM (
             SELECT DISTINCT ON (committee.ocd_id, event.ocd_id)
               committee.name,
               committee.slug,
@@ -462,9 +463,11 @@ class Command(BaseCommand):
             JOIN councilmatic_core_organization AS committee
               ON p.entity_name = committee.name
             WHERE committee.ocd_id IN %s
+              AND event.start_time > NOW()
             ORDER BY committee.ocd_id,
-                     event.ocd_id,
-                     event.start_time DESC
+                     event.ocd_id
+            ) AS events
+            ORDER BY events.start_time DESC
         '''
 
         cursor = connection.cursor()

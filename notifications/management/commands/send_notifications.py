@@ -46,7 +46,8 @@ class Command(BaseCommand):
               array_agg(DISTINCT bss.search_params) AS bill_search_params,
               array_agg(DISTINCT cas.committee_id) AS committee_action_ids,
               array_agg(DISTINCT ces.committee_id) AS committee_event_ids,
-              array_agg(DISTINCT ps.person_id) as person_ids
+              array_agg(DISTINCT ps.person_id) as person_ids,
+              bool_and(es.id::bool) AS event_subscription
             FROM auth_user AS u
             LEFT JOIN notifications_billactionsubscription AS bas
               ON u.id = bas.user_id
@@ -58,11 +59,14 @@ class Command(BaseCommand):
               ON u.id = ces.user_id
             LEFT JOIN notifications_personsubscription AS ps
               ON u.id = ps.user_id
+            LEFT JOIN notifications_eventssubscription AS es
+              ON u.id = es.user_id
             WHERE (bas.bill_id IS NOT NULL
                    OR bss.search_params IS NOT NULL
                    OR cas.committee_id IS NOT NULL
                    OR ces.committee_id IS NOT NULL
-                   OR ps.person_id IS NOT NULL)
+                   OR ps.person_id IS NOT NULL
+                   OR es.id IS NOT NULL)
         '''
 
         q_args = []
@@ -101,7 +105,8 @@ class Command(BaseCommand):
             committee_action_ids = [i for i in user_subscriptions['committee_action_ids'] if i]
             committee_event_ids = [i for i in user_subscriptions['committee_event_ids'] if i]
             person_ids = [i for i in user_subscriptions['person_ids'] if i]
-
+            event_subscription = user_subscriptions['event_subscription']
+            
             # send_notification = False
 
             if bill_action_ids:
@@ -133,6 +138,12 @@ class Command(BaseCommand):
 
                 if person_updates:
                     send_notification = True
+            
+            if event_subscription:
+                event_updates = self.find_event_updates()
+
+                if event_updates:
+                    send_notification = True
 
             if send_notification:
                 send_notification_email.delay(user_id=user_subscriptions['user_id'],
@@ -141,13 +152,15 @@ class Command(BaseCommand):
                                               bill_search_updates=bill_search_updates,
                                               person_updates=person_updates,
                                               committee_action_updates=committee_action_updates,
-                                              committee_event_updates=committee_event_updates)
+                                              committee_event_updates=committee_event_updates,
+                                              event_updates=event_updates)
 
                 output = dict(bill_action_updates=bill_action_updates,
                           bill_search_updates=bill_search_updates,
                           person_updates=person_updates,
                           committee_action_updates=committee_action_updates,
-                          committee_event_updates=committee_event_updates)
+                          committee_event_updates=committee_event_updates,
+                          event_updates=event_updates)
 
         if output is None:
             self.stdout.write('no email')
@@ -269,27 +282,27 @@ class Command(BaseCommand):
               ON new.bill_id = bill.ocd_id
             WHERE new.person_id IN %s
         '''
-
-        new_actions = '''
-            SELECT DISTINCT ON (person.ocd_id, bill.ocd_id)
-              person.name,
-              person.slug,
-              bill.identifier,
-              bill.slug,
-              bill.description,
-              action.description,
-              action.date
-            FROM new_action AS new
-            JOIN councilmatic_core_bill AS bill
-              ON new.bill_id = bill.ocd_id
-            JOIN councilmatic_core_action AS action
-              ON bill.ocd_id = action.bill_id
-            JOIN councilmatic_core_sponsorship AS sponsor
-              ON bill.ocd_id = sponsor.bill_id
-            JOIN councilmatic_core_person AS person
-              ON sponsor.person_id = person.ocd_id
-            WHERE person.ocd_id IN %s
-        '''
+        
+        # new_actions = '''
+        #     SELECT DISTINCT ON (person.ocd_id, bill.ocd_id)
+        #       person.name,
+        #       person.slug,
+        #       bill.identifier,
+        #       bill.slug,
+        #       bill.description,
+        #       action.description,
+        #       action.date
+        #     FROM new_action AS new
+        #     JOIN councilmatic_core_bill AS bill
+        #       ON new.bill_id = bill.ocd_id
+        #     JOIN councilmatic_core_action AS action
+        #       ON bill.ocd_id = action.bill_id
+        #     JOIN councilmatic_core_sponsorship AS sponsor
+        #       ON bill.ocd_id = sponsor.bill_id
+        #     JOIN councilmatic_core_person AS person
+        #       ON sponsor.person_id = person.ocd_id
+        #     WHERE person.ocd_id IN %s
+        # '''
 
         person_updates = []
 
@@ -311,22 +324,26 @@ class Command(BaseCommand):
             }
             person_updates.append((person, bill))
 
-        cursor.execute(new_actions, [tuple(person_ids)])
+        # cursor.execute(new_actions, [tuple(person_ids)])
 
-        for row in cursor:
-            person = {
-                'name': row[0],
-                'slug': row[1],
-            }
-            bill = {
-                'identifier': row[2],
-                'slug': row[3],
-                'description': row[4],
-                'action_description': row[5],
-                'action_date': row[6],
-                'update_type': 'New Action'
-            }
-            person_updates.append((person, bill))
+        # for row in cursor:
+        #     person = {
+        #         'name': row[0],
+        #         'slug': row[1],
+        #     }
+        #     bill = {
+        #         'identifier': row[2],
+        #         'slug': row[3],
+        #         'description': row[4],
+        #         'action_description': row[5],
+        #         'action_date': row[6],
+        #         'update_type': 'New Action'
+        #     }
+        #     person_updates.append((person, bill))
+        
+        # TODO: Refactor to remove all this regrouping nonsense since we are
+        # not sending notifications for when a bill that a person sponsored has
+        # an action on it.
 
         update_groups = []
 
@@ -476,6 +493,30 @@ class Command(BaseCommand):
             updates.append(committee)
 
         return updates
+    
+    def find_event_updates(self):
+        new_events = ''' 
+            SELECT * FROM (
+            SELECT DISTINCT ON (event.ocd_id)
+              event.name,
+              event.start_time,
+              event.end_time,
+              event.slug,
+              event.all_day,
+              event.location_name,
+              event.slug
+            FROM councilmatic_core_event AS event
+            JOIN new_event AS new
+              ON event.ocd_id = new.ocd_id
+            ) AS events
+            ORDER BY events.start_time
+        '''
+        
+        cursor = connection.cursor()
+        cursor.execute(new_events)
+        columns = [c[0] for c in cursor.description]
+        
+        return [dict(zip(columns, r)) for r in cursor]
 
 @django_rq.job
 def send_notification_email(user_id=None,
@@ -484,7 +525,8 @@ def send_notification_email(user_id=None,
                             bill_search_updates=[],
                             person_updates=[],
                             committee_action_updates=[],
-                            committee_event_updates=[]):
+                            committee_event_updates=[],
+                            event_updates=[]):
 
     context = {
         # 'user': user,
@@ -495,6 +537,7 @@ def send_notification_email(user_id=None,
         'person_updates': person_updates,
         'committee_action_updates': committee_action_updates,
         'committee_event_updates': committee_event_updates,
+        'event_updates': event_updates,
     }
 
     html = "notifications_email.html"

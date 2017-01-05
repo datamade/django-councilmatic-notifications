@@ -216,7 +216,7 @@
     {% endif %}
 
     <!-- Event updates -->
-    {% if event_updates %}
+    {% if new_events %}
 
     <h3>New meetings</h3>
 
@@ -229,7 +229,44 @@
         </tr>
       </thead>
       <tbody>
-      {% for event in event_updates %}
+      {% for event in new_events %}
+         <tr>
+             <td align="left">
+                <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'event_detail' event.slug %}">
+                  {{ event.name }}
+                </a>
+             </td>
+             <td>
+                  {{ event.location_name }}
+             </td>
+             <td>
+                  {% if event.all_day %}
+                      All Day
+                  {% else %}
+                  {{ event.start_time|date:"M/j/Y fa" }} {% if event.end_time %}- {{ event.end_time|date:"M/j/Y fa" }} {% endif %}
+                  {% endif %}
+             </td>
+         </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    {% endif %}
+
+    {% if updated_events %}
+
+    <h3>Updated meetings</h3>
+
+    <table class='table' id='subscriptions'>
+      <thead>
+        <tr>
+           <th align='left'>Event</th>
+           <th align='left'>Location</th>
+           <th align='left'>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for event in updated_events %}
          <tr>
              <td align="left">
                 <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'event_detail' event.slug %}">

@@ -140,9 +140,10 @@ class Command(BaseCommand):
                     send_notification = True
             
             if event_subscription:
-                event_updates = self.find_event_updates()
+                new_events = self.find_new_events()
+                updated_events = self.find_updated_events()
 
-                if event_updates:
+                if new_events or updated_events:
                     send_notification = True
 
             if send_notification:
@@ -153,14 +154,16 @@ class Command(BaseCommand):
                                               person_updates=person_updates,
                                               committee_action_updates=committee_action_updates,
                                               committee_event_updates=committee_event_updates,
-                                              event_updates=event_updates)
+                                              updated_events=updated_events,
+                                              new_events=new_events)
 
                 output = dict(bill_action_updates=bill_action_updates,
-                          bill_search_updates=bill_search_updates,
-                          person_updates=person_updates,
-                          committee_action_updates=committee_action_updates,
-                          committee_event_updates=committee_event_updates,
-                          event_updates=event_updates)
+                              bill_search_updates=bill_search_updates,
+                              person_updates=person_updates,
+                              committee_action_updates=committee_action_updates,
+                              committee_event_updates=committee_event_updates,
+                              updated_events=updated_events,
+                              new_events=new_events)
 
         if output is None:
             self.stdout.write('no email')
@@ -494,7 +497,7 @@ class Command(BaseCommand):
 
         return updates
     
-    def find_event_updates(self):
+    def find_new_events(self):
         new_events = ''' 
             SELECT * FROM (
             SELECT DISTINCT ON (event.ocd_id)
@@ -508,6 +511,32 @@ class Command(BaseCommand):
             FROM councilmatic_core_event AS event
             JOIN new_event AS new
               ON event.ocd_id = new.ocd_id
+            WHERE event.start_time > NOW()
+            ) AS events
+            ORDER BY events.start_time
+        '''
+        
+        cursor = connection.cursor()
+        cursor.execute(new_events)
+        columns = [c[0] for c in cursor.description]
+        
+        return [dict(zip(columns, r)) for r in cursor]
+    
+    def find_updated_events(self):
+        new_events = ''' 
+            SELECT * FROM (
+            SELECT DISTINCT ON (event.ocd_id)
+              event.name,
+              event.start_time,
+              event.end_time,
+              event.slug,
+              event.all_day,
+              event.location_name,
+              event.slug
+            FROM councilmatic_core_event AS event
+            JOIN change_event AS change
+              ON event.ocd_id = change.ocd_id
+            WHERE event.start_time > NOW()
             ) AS events
             ORDER BY events.start_time
         '''
@@ -526,7 +555,8 @@ def send_notification_email(user_id=None,
                             person_updates=[],
                             committee_action_updates=[],
                             committee_event_updates=[],
-                            event_updates=[]):
+                            updated_events=[],
+                            new_events=[]):
 
     context = {
         # 'user': user,
@@ -537,7 +567,8 @@ def send_notification_email(user_id=None,
         'person_updates': person_updates,
         'committee_action_updates': committee_action_updates,
         'committee_event_updates': committee_event_updates,
-        'event_updates': event_updates,
+        'updated_events': updated_events,
+        'new_events': new_events,
     }
 
     html = "notifications_email.html"

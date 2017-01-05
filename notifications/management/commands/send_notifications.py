@@ -240,8 +240,6 @@ class Command(BaseCommand):
 
             results = requests.get('{}/select'.format(haystack_url), params=query_params)
             
-            print(results.json()['response']['docs'], query_params)
-
             ocd_ids = tuple(r['ocd_id'] for r in results.json()['response']['docs'])
             
 

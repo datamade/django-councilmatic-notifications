@@ -222,8 +222,14 @@ class Command(BaseCommand):
         cursor = connection.cursor()
 
         for params in search_params:
+            
+            term = params['term'].strip()
+
+            if not term:
+                term = '*:*'
+
             query_params = {
-                'q': params['term'],
+                'q': term,
                 'fq': [],
                 'wt': 'json'
             }
@@ -233,8 +239,12 @@ class Command(BaseCommand):
                     query_params['fq'].append('{0}:{1}'.format(facet, value))
 
             results = requests.get('{}/select'.format(haystack_url), params=query_params)
+            
+            print(results.json()['response']['docs'], query_params)
 
             ocd_ids = tuple(r['ocd_id'] for r in results.json()['response']['docs'])
+            
+
 
             new_bills = '''
                 SELECT DISTINCT ON (bill.ocd_id)

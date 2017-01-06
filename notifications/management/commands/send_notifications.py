@@ -141,6 +141,9 @@ class Command(BaseCommand):
                 if person_updates:
                     send_notification = True
             
+            new_events = []
+            updated_events = []
+            
             if event_subscription:
                 new_events = self.find_new_events()
                 updated_events = self.find_updated_events()

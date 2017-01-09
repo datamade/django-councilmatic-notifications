@@ -20,21 +20,22 @@
 
     <hr style="border-top: 1px solid #F4F4F4;">
 
-    <h3>Notifications about your Councilmatic Subscriptions</h3>
-    <p style="font-size: 18px">{{ SITE_META.site_name }} has updates! This email provides information about your subscriptions to council members, committee actions, committee events, bill searches, bill actions, and meetings.</p>
+    <h2 style="font-size: 16px">Notifications about your Councilmatic Subscriptions</h2>
+    <p style="font-size: 12px">{{ SITE_META.site_name }} has updates! This email provides information about your subscriptions to council members, committee actions, committee events, bill searches, bill actions, and meetings.</p>
 
     <!-- Persons -->
     {% if person_updates %}
 
-    <h3>{{ CITY_VOCAB.COUNCIL_MEMBER }} Notifications</h3>
+    <h2 style="font-size: 16px">{{ CITY_VOCAB.COUNCIL_MEMBER }} Notifications</h2>
+
+    <p style="font-style: italic;">This list shows all {{ update_type }}s to legislation by {{ CITY_VOCAB.COUNCIL_MEMBER }}s.</p>
 
     {% for update in person_updates %}
          {% for update_type, person in update.items %}
-             <h4>
+             <h3>
                  <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'person' person.slug %}">
                      {{person.name}} - {{ update_type }}
                  </a>
-
              </h4>
 
              <table id='subscriptions'>
@@ -75,9 +76,10 @@
     <!-- Committee Actions -->
     {% if committee_action_updates %}
          {% for committee in committee_action_updates %}
-             <h3>{{ committee.name }} Notifications</h3>
+             <h2 style="font-size: 16px">{{ committee.name }} Notifications</h2>
+             <p style="font-style: italic;">Some committees have been busy! This list shows all bills with new actions, as a result of committee activitiy.</p>
              {% for bill in committee.bills %}
-                 <h4>Bill actions -
+                 <h3>Bill actions -
                      <a style="color: #eb6864; text-decoration:  none;" href="{{SITE_META.site_url}}{% url 'bill_detail' bill.slug %}">
                          {{ bill.identifier }}
                      </a>
@@ -111,10 +113,10 @@
     <!-- Committee Events -->
     {% if committee_event_updates %}
 
-    <h3>Committee Event Notifications</h3>
-
+    <h2 style="font-size: 16px">Committee Event Notifications</h2>
+    <p style="font-style: italic;">Some committees have things on the horizon! This list shows all newly listed upcoming committee events.</p>
     {% for committee in committee_event_updates %}
-       <h4>{{ committee.name }}</h4>
+       <h3>{{ committee.name }}</h4>
        <table id='subscriptions'>
            <thead>
                <tr>
@@ -148,10 +150,10 @@
     <!-- Bill searches -->
     {% if bill_search_updates %}
 
-    <h3>Bill Search Notifications</h3>
-
+    <h2 style="font-size: 16px">Bill Search Notifications</h2>
+    <p style="font-style: italic;">Your search results have changed! This list shows new results for previous searches.</p>
     {% for search in bill_search_updates %}
-       <h4>
+       <h3>
            Term: {{ search.params.term }}
            {% if search.params.facets %}
                <br />
@@ -188,7 +190,8 @@
     <!-- Bill actions -->
     {% if bill_action_updates %}
 
-    <h3>Bill Action Notifications</h3>
+    <h2 style="font-size: 16px">Bill Action Notifications</h2>
+    <p style="font-style: italic;">Some bills have updates! This list shows which bills have new legislative actions.</p>
 
     <table class='table' id='subscriptions'>
       <thead>
@@ -218,7 +221,8 @@
     <!-- Event updates -->
     {% if new_events %}
 
-    <h3>New meetings</h3>
+    <h2 style="font-size: 16px">New meetings</h2>
+    <p style="font-style: italic;">Mark your calendars! This list shows newly posted meetings.</p>
 
     <table class='table' id='subscriptions'>
       <thead>
@@ -255,8 +259,8 @@
 
     {% if updated_events %}
 
-    <h3>Updated meetings</h3>
-
+    <h2 style="font-size: 16px">Updated meetings</h2>
+    <p style="font-style: italic;">Mark your calendars! This list shows meetings, where updates have been made to the location, the time, or other details.</p>
     <table class='table' id='subscriptions'>
       <thead>
         <tr>

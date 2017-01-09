@@ -9,7 +9,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='django-councilmatic-notifications',
-    version='0.1.17',
+    version='0.1.18',
     packages=['notifications'],
     include_package_data=True,
     license='MIT License',  # example license

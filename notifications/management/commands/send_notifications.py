@@ -96,20 +96,14 @@ class Command(BaseCommand):
         for row in cursor:
             user_subscriptions = dict(zip(columns, row))
 
-            # bill_action_updates = []
-            # bill_search_updates = []
-            # committee_action_updates = []
-            # committee_event_updates = []
-            # person_updates = []
-
             bill_action_ids = [i for i in user_subscriptions['bill_action_ids'] if i]
             bill_search_params = [i for i in user_subscriptions['bill_search_params'] if i]
             committee_action_ids = [i for i in user_subscriptions['committee_action_ids'] if i]
             committee_event_ids = [i for i in user_subscriptions['committee_event_ids'] if i]
             person_ids = [i for i in user_subscriptions['person_ids'] if i]
             event_subscription = user_subscriptions['event_subscription']
-            
-            # send_notification = False
+
+            send_notification = False
 
             if bill_action_ids:
                 bill_action_updates = self.find_bill_action_updates(bill_action_ids)
@@ -140,10 +134,10 @@ class Command(BaseCommand):
 
                 if person_updates:
                     send_notification = True
-            
+
             new_events = []
             updated_events = []
-            
+
             if event_subscription:
                 new_events = self.find_new_events()
                 updated_events = self.find_updated_events()
@@ -227,7 +221,7 @@ class Command(BaseCommand):
         cursor = connection.cursor()
 
         for params in search_params:
-            
+
             term = params['term'].strip()
 
             if not term:
@@ -244,9 +238,9 @@ class Command(BaseCommand):
                     query_params['fq'].append('{0}:{1}'.format(facet, value))
 
             results = requests.get('{}/select'.format(haystack_url), params=query_params)
-            
+
             ocd_ids = tuple(r['ocd_id'] for r in results.json()['response']['docs'])
-            
+
 
 
             new_bills = '''
@@ -298,7 +292,7 @@ class Command(BaseCommand):
               ON new.bill_id = bill.ocd_id
             WHERE new.person_id IN %s
         '''
-        
+
         # new_actions = '''
         #     SELECT DISTINCT ON (person.ocd_id, bill.ocd_id)
         #       person.name,
@@ -356,7 +350,7 @@ class Command(BaseCommand):
         #         'update_type': 'New Action'
         #     }
         #     person_updates.append((person, bill))
-        
+
         # TODO: Refactor to remove all this regrouping nonsense since we are
         # not sending notifications for when a bill that a person sponsored has
         # an action on it.
@@ -512,9 +506,9 @@ class Command(BaseCommand):
             updates.append(committee)
 
         return updates
-    
+
     def find_new_events(self):
-        new_events = ''' 
+        new_events = '''
             SELECT * FROM (
             SELECT DISTINCT ON (event.ocd_id)
               event.name,
@@ -531,15 +525,15 @@ class Command(BaseCommand):
             ) AS events
             ORDER BY events.start_time
         '''
-        
+
         cursor = connection.cursor()
         cursor.execute(new_events)
         columns = [c[0] for c in cursor.description]
-        
+
         return [dict(zip(columns, r)) for r in cursor]
-    
+
     def find_updated_events(self):
-        new_events = ''' 
+        new_events = '''
             SELECT * FROM (
             SELECT DISTINCT ON (event.ocd_id)
               event.name,
@@ -556,11 +550,11 @@ class Command(BaseCommand):
             ) AS events
             ORDER BY events.start_time
         '''
-        
+
         cursor = connection.cursor()
         cursor.execute(new_events)
         columns = [c[0] for c in cursor.description]
-        
+
         return [dict(zip(columns, r)) for r in cursor]
 
 @django_rq.job

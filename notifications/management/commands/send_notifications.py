@@ -242,7 +242,6 @@ class Command(BaseCommand):
             ocd_ids = tuple(r['ocd_id'] for r in results.json()['response']['docs'])
 
 
-
             new_bills = '''
                 SELECT DISTINCT ON (bill.ocd_id)
                   bill.slug AS bill_slug,
@@ -254,23 +253,24 @@ class Command(BaseCommand):
                 WHERE new.ocd_id IN %s
             '''
 
-            cursor.execute(new_bills, [ocd_ids])
+            if ocd_ids:
+                cursor.execute(new_bills, [ocd_ids])
 
-            bills = []
+                bills = []
 
-            for row in cursor:
-                bill = {
-                    'slug': row[0],
-                    'identifier': row[1],
-                    'description': row[2]
-                }
-                bills.append(bill)
+                for row in cursor:
+                    bill = {
+                        'slug': row[0],
+                        'identifier': row[1],
+                        'description': row[2]
+                    }
+                    bills.append(bill)
 
-            if bills:
-                search_updates.append({
-                    'params': params,
-                    'bills': bills
-                })
+                if bills:
+                    search_updates.append({
+                        'params': params,
+                        'bills': bills
+                    })
 
         return search_updates
 

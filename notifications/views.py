@@ -100,7 +100,13 @@ def notifications_activation(request, activation_key):
             profile.activation_key = activation_key
             profile.save()
 
-            send_signup_email(profile.user, request.get_host())
+            redirect = reverse('index')
+            if request.GET.get('next'):
+                redirect = request.GET['next']
+
+            host = '{0}://{1}'.format(request.scheme, request.get_host())
+
+            send_signup_email(profile.user, host, redirect)
 
             message = 'Your activation link has expired. A new link has been sent to your email.'
             message_level = 'ERROR'

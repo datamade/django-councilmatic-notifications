@@ -25,12 +25,16 @@ jsonify.is_safe = True
 def custom_reverse_search_url(subscription):
     url = '/search/'
     d = [('q',subscription.search_params['term'])]
-    
+
     for k,vs in subscription.search_params['facets'].items():
-        
+
         for v in vs:
             d.append(("selected_facets","%s_exact:%s" % (k,v)))
-    
+
     url += "?" + urllib.parse.urlencode(d)
-    
+
     return url
+
+@register.filter
+def to_quote(value):
+    return value.replace("&quot;",'"')

@@ -154,7 +154,7 @@
     <p style="font-style: italic;">Your search results have changed! This list shows new results for previous searches.</p>
     {% for search in bill_search_updates %}
        <h3>
-           Term: {{ search.params.term }}
+           Term: {{ search.params.term|to_quote }}
            {% if search.params.facets %}
                <br />
                Selected facets:&nbsp;

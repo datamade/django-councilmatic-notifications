@@ -86,7 +86,7 @@
                     <td>
                         <b>Search term:</b>
                         <a href="{{ subscription|custom_reverse_search_url }}">
-                            {{subscription.search_params.term }}
+                            {{subscription.search_params.term|to_quote }}
                         </a>
                         <br/>
                         <span class="small text-muted">

@@ -1,4 +1,5 @@
 {% load staticfiles %}
+{% load notifications_extras %}
 ** Notifications about your {{ CITY_NAME_SHORT }} Councilmatic Subscriptions
 ------------------------------------------------------------
 

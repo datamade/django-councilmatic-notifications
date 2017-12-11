@@ -100,7 +100,8 @@
 
                     </td>
                     <td>
-                        <a href="{# url 'councilmatic_search_feed' subscription.search_term #}" title="RSS feed for Actions for {{subscription.committee.name}}"><i class="fa fa-rss-square" aria-hidden="true"></i></a>
+                        <a href="{{ subscription.search_params.facets.items|create_facet_string:subscription.search_params.term }}" title="RSS feed for {{subscription.search_term}}"><i class="fa fa-rss-square" aria-hidden="true"></i></a>
+                       
                     </td>
                     <td align="left">
                         <button data-toggle="modal" data-target="#unsubscribe-modal" title="delete this alert" class="btn btn-default btn-xs prompt-unsubscribe"><i class="fa fa-trash-o fa-fw" aria-hidden="true"></i></button>

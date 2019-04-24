@@ -20,6 +20,7 @@ setup(
     author_email='info@datamade.us',
     install_requires=[
         'django-councilmatic>=0.7,<=0.8.7',
+        'rq>=0.5.5,<1.0',
         'django-rq==0.9.3'
     ],
     classifiers=[

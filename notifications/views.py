@@ -7,17 +7,22 @@ import hashlib
 
 from io import StringIO
 
+import django
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponseRedirect, HttpResponse
 from django.conf import settings
 from django import forms
 from django.utils import timezone
 
-from django.core.urlresolvers import reverse
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMessage
 from django.core.cache import cache
 from django.core import management
+
+if django.VERSION < (2, 0):
+    from django.core.urlresolvers import reverse
+else:
+    from django.urls import reverse
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout

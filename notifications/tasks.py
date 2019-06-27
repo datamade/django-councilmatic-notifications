@@ -1,7 +1,5 @@
 import json
 
-import django_rq
-
 from django.core.mail import EmailMessage
 
 from councilmatic_core.models import Bill, Events

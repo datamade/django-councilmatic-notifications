@@ -19,30 +19,50 @@ class Subscription(models.Model):
     #    5) BillActionSubscription: actions on individual bills
     #    6) EventsSubscription: all events (e.g. https://nyc.councilmatic.org/events/ )
 
-    user = models.ForeignKey(User, related_name='%(class)ss', db_column='user_id')
-    last_datetime_updated = models.DateTimeField(auto_now=True) #XXX
+    user = models.ForeignKey(
+        User,
+        related_name='%(class)ss',
+        db_column='user_id',
+        on_delete=models.CASCADE
+    )
+    last_datetime_updated = models.DateTimeField(auto_now=True)
 
     # Make this an abstract base class
     class Meta:
         abstract = True
-    pass
 
 
 class PersonSubscription(Subscription):
     # related_name lets us go from the user to their committee member subscriptions
-    person = models.ForeignKey(Person, related_name = 'subscriptions')
+    person = models.ForeignKey(
+        Person,
+        related_name='subscriptions',
+        on_delete=models.CASCADE
+    )
 
 class CommitteeActionSubscription(Subscription):
-    committee = models.ForeignKey(Organization, related_name = 'subscriptions_actions')
+    committee = models.ForeignKey(
+        Organization,
+        related_name='subscriptions_actions',
+        on_delete=models.CASCADE
+    )
 
 class CommitteeEventSubscription(Subscription):
-    committee = models.ForeignKey(Organization, related_name = 'subscriptions_events')
+    committee = models.ForeignKey(
+        Organization,
+        related_name='subscriptions_events',
+        on_delete=models.CASCADE
+    )
 
 class BillSearchSubscription(Subscription):
     search_params = JSONField(db_index=True, null=True)
 
 class BillActionSubscription(Subscription):
-    bill = models.ForeignKey(Bill, related_name = 'subscriptions')
+    bill = models.ForeignKey(
+        Bill,
+        related_name='subscriptions',
+        on_delete=models.CASCADE
+    )
 
 class EventsSubscription(Subscription):
     # This subscribes to all recent/upcoming events as per https://github.com/datamade/nyc-councilmatic/issues/175
@@ -50,7 +70,7 @@ class EventsSubscription(Subscription):
     pass
 
 class SubscriptionProfile(models.Model):
-    user = models.OneToOneField(User)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     activation_key = models.CharField(max_length=40)
     key_expires = models.DateTimeField()
 

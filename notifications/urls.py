@@ -1,6 +1,7 @@
+import django
 from django.conf.urls import include, url
 from django.views.decorators.cache import never_cache
-from django.contrib.auth.views import password_change, password_change_done
+import django.contrib.auth.views as auth_views
 
 from notifications.views import notifications_login, notifications_logout, \
     notifications_signup, notifications_activation, notifications_account_settings, \
@@ -10,7 +11,12 @@ from notifications.views import notifications_login, notifications_logout, \
     search_subscribe, search_unsubscribe, events_subscribe, events_unsubscribe, \
     send_notifications
 
-import django_rq
+if django.VERSION < (1, 11):
+    password_change = auth_views.password_change
+    password_change_done = auth_views.password_change_done
+else:
+    password_change = auth_views.PasswordChangeView.as_view
+    password_change_done = auth_views.PasswordChangeDoneView.as_view
 
 
 urlpatterns = [

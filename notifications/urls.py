@@ -4,7 +4,7 @@ from django.views.decorators.cache import never_cache
 import django.contrib.auth.views as auth_views
 
 from notifications.views import notifications_login, notifications_logout, \
-    notifications_signup, notifications_activation, notifications_account_settings, \
+    notifications_signup, notifications_activation, \
     SubscriptionsManageView, person_subscribe, person_unsubscribe, bill_subscribe, \
     bill_unsubscribe, committee_events_subscribe, committee_events_unsubscribe, \
     committee_actions_subscribe, committee_actions_unsubscribe, search_check_subscription, \
@@ -24,7 +24,6 @@ urlpatterns = [
     url(r'^logout/$', notifications_logout, name='notifications_logout'),
     url(r'^signup/$', notifications_signup, name='notifications_signup'),
     url(r'^activation/(?P<activation_key>[^/]+)/$', notifications_activation, name='notifications_activation'),
-    url(r'^account/settings/$', notifications_account_settings, name='notifications_account_settings'),
     url(r'^account/subscriptions/$', never_cache(SubscriptionsManageView.as_view()), name='subscriptions_manage'),
     # url(r'^notification_loaddata$', notification_loaddata, name='notification_loaddata'),
     # list of things to subscribe/unsubscribe to:

@@ -23,6 +23,7 @@ INSTALLED_APPS = (
     'django_rq',
     'password_reset',
     'django.contrib.postgres',
+    'adv_cache_tag'
 )
 
 MIDDLEWARE = [
@@ -37,6 +38,23 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'councilmatic_core.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+                'councilmatic_core.views.city_context',
+            ],
+        },
+    },
+]
 
 DATABASES = {
     'default': {

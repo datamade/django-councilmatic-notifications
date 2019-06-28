@@ -191,10 +191,6 @@ def notifications_logout(request):
     logout(request)
     return HttpResponseRedirect('/')
 
-@login_required(login_url='/login/')
-def notifications_account_settings(request):
-    return HttpResponse('notifications_account_settings')
-
 class SubscriptionsManageView(LoginRequiredMixin, TemplateView):
     template_name = 'subscriptions_manage.html'
 

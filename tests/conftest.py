@@ -3,11 +3,22 @@ import datetime
 import pytest
 from pytest_django.fixtures import db
 from django.contrib.auth.models import User
+from django.core.management import call_command
 
 from councilmatic_core.models import Bill, Event, BillDocument
 from opencivicdata.core.models import Jurisdiction, Division
 from opencivicdata.legislative.models import BillDocumentLink, EventDocument, \
     EventDocumentLink, LegislativeSession, BillVersion
+
+
+@pytest.fixture(scope='module')
+def setup(django_db_blocker):
+    with django_db_blocker.unblock():
+        call_command('loaddata', 'tests/fixtures/test_data.json')
+
+    yield
+
+    django_db_blocker.restore()
 
 
 @pytest.fixture
@@ -126,10 +137,13 @@ def metro_event_document(metro_event, db):
 
     return document
 
+
 @pytest.fixture
 @pytest.mark.django_db
 def user(db):
-    return User.objects.create(
-        username='testuser',
-        is_superuser=False
-    )
+    user = {
+        'username': 'testuser',
+        'password': 'foobar',
+        'is_superuser': False
+    }
+    return User.objects.create(**user)

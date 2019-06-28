@@ -5,4 +5,4 @@ recursive-include notifications/templates *
 recursive-include notifications/migrations *
 recursive-include notifications/management *
 recursive-include notifications/templatetags *
-
+recursive-exclude tests *

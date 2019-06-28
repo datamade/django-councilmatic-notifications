@@ -23,7 +23,7 @@ setup(
         'django-rq>=0.9.3',
         'django-password-reset>=2.0'
     ],
-    extras_require={'tests': ['pytest', 'pytest-django']},
+    extras_require={'tests': ['pytest', 'pytest-django', 'pytest-mock']},
     classifiers=[
         'Environment :: Web Environment',
         'Framework :: Django',

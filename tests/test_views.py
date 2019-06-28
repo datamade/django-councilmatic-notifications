@@ -1,5 +1,22 @@
-def test_signup():
-    assert False
+import pytest
+from django.urls import reverse
+
+@pytest.mark.django_db
+def test_signup(client, mocker):
+    send_signup_email = mocker.patch(
+        'notifications.utils.send_signup_email',
+        autospec=True
+    )
+    data = {
+        'username': 'test',
+        'email': 'test@example.com',
+        'password1': 'foobar',
+        'password2': 'foobar',
+    }
+    signup_response = client.post(reverse('notifications_signup'), data=data)
+    assert signup_response.status_code == 302
+    assert signup_response.url == reverse('index')
+    assert send_signup_email.call_count == 1
 
 
 def test_login():

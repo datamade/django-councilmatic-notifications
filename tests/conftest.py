@@ -2,8 +2,7 @@ import datetime
 
 import pytest
 from pytest_django.fixtures import db
-from django.conf import settings
-from django.db import connection
+from django.contrib.auth.models import User
 
 from councilmatic_core.models import Bill, Event, BillDocument
 from opencivicdata.core.models import Jurisdiction, Division
@@ -126,3 +125,11 @@ def metro_event_document(metro_event, db):
     EventDocumentLink.objects.create(**document_link_info)
 
     return document
+
+@pytest.fixture
+@pytest.mark.django_db
+def user(db):
+    return User.objects.create(
+        username='testuser',
+        is_superuser=False
+    )

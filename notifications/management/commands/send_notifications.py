@@ -5,22 +5,28 @@ import json
 from collections import OrderedDict
 import itertools
 import requests
-from datetime import date
+from datetime import datetime, date, timedelta
 from io import StringIO
 
 import django_rq
 import pysolr
+import pytz
 
 from django.core.management.base import BaseCommand, CommandError
 from django.core.mail import EmailMultiAlternatives
 
 from django.db import transaction, connection
+from django.db import models as django_models
+from django.db.models.functions import Cast
 from django.db.utils import ProgrammingError
 
 from django.template.loader import get_template
 from django.conf import settings
 
 from django.contrib.auth.models import User
+
+from opencivicdata.legislative import models as ocd_legislative_models
+from councilmatic_core import models as councilmatic_models
 
 try:
     haystack_url = settings.HAYSTACK_CONNECTIONS['default']['URL']
@@ -36,6 +42,13 @@ class Command(BaseCommand):
             '--users',
             default='all',
             help='Comma separated list of usernames to send notifications to.'
+        )
+
+        parser.add_argument(
+            '--minutes',
+            default=15,
+            type=int,
+            help='How many minutes ago to set the threshold for considering an update to be "new".'
         )
 
     def handle(self, *args, **options):
@@ -106,31 +119,46 @@ class Command(BaseCommand):
             send_notification = False
 
             if bill_action_ids:
-                bill_action_updates = self.find_bill_action_updates(bill_action_ids)
+                bill_action_updates = self.find_bill_action_updates(
+                    bill_action_ids,
+                    minutes=options['minutes']
+                )
 
                 if bill_action_updates:
                     send_notification = True
 
             if bill_search_params:
-                bill_search_updates = self.find_bill_search_updates(bill_search_params)
+                bill_search_updates = self.find_bill_search_updates(
+                    bill_search_params,
+                    minutes=options['minutes']
+                )
 
                 if bill_search_updates:
                     send_notification = True
 
             if committee_action_ids:
-                committee_action_updates = self.find_committee_action_updates(committee_action_ids)
+                committee_action_updates = self.find_committee_action_updates(
+                    committee_action_ids,
+                    minutes=options['minutes']
+                )
 
                 if committee_action_updates:
                     send_notification = True
 
             if committee_event_ids:
-                committee_event_updates = self.find_committee_event_updates(committee_event_ids)
+                committee_event_updates = self.find_committee_event_updates(
+                    committee_event_ids,
+                    minutes=options['minutes']
+                )
 
                 if committee_event_updates:
                     send_notification = True
 
             if person_ids:
-                person_updates = self.find_person_updates(person_ids)
+                person_updates = self.find_person_updates(
+                    person_ids,
+                    minutes=options['minutes']
+                )
 
                 if person_updates:
                     send_notification = True
@@ -139,8 +167,8 @@ class Command(BaseCommand):
             updated_events = []
 
             if event_subscription:
-                new_events = self.find_new_events()
-                updated_events = self.find_updated_events()
+                new_events = self.find_new_events(minutes=options['minutes'])
+                updated_events = self.find_updated_events(minutes=options['minutes'])
 
                 if new_events or updated_events:
                     send_notification = True
@@ -171,46 +199,33 @@ class Command(BaseCommand):
             dthandler = lambda x: x.isoformat() if isinstance(x, date) else None
             self.stdout.write(json.dumps(output, default=dthandler))
 
-
-    def find_bill_action_updates(self, bill_ids):
-
-        new_actions = '''
-            SELECT DISTINCT ON (bill.ocd_id)
-              bill.slug AS bill_slug,
-              bill.identifier AS bill_identifier,
-              bill.description AS bill_description,
-              action.description AS action_description,
-              action.date AS action_date
-            FROM new_action AS new
-            JOIN councilmatic_core_bill AS bill
-              ON new.bill_id = bill.ocd_id
-            JOIN councilmatic_core_action AS action
-              ON new.bill_id = action.bill_id
-            WHERE new.bill_id IN %s
-        '''
-
-        cursor = connection.cursor()
-        cursor.execute(new_actions, [tuple(bill_ids)])
+    def find_bill_action_updates(self, bill_ids, minutes=15):
+        new_actions = ocd_legislative_models.BillAction.objects.annotate(
+            action_date=Cast('date', django_models.DateTimeField())
+        ).filter(
+            bill__id__in=bill_ids,
+            action_date__gte=(datetime.now(pytz.timezone(settings.TIME_ZONE)) - timedelta(minutes=minutes))
+        )
 
         bill_action_updates = []
 
-        for row in cursor:
+        for action in new_actions:
 
             bill = {
-                'slug': row[0],
-                'identifier': row[1],
-                'description': row[2],
+                'slug': action.bill.councilmatic_bill.slug,
+                'identifier': action.bill.identifier,
+                'description': action.bill.title
             }
             action = {
-                'description': row[3],
-                'date': row[4],
+                'description': action.description,
+                'date': action.date,
             }
 
             bill_action_updates.append((bill, action))
 
         return bill_action_updates
 
-    def find_bill_search_updates(self, search_params):
+    def find_bill_search_updates(self, search_params, minutes=15):
 
         if not haystack_url:
             self.stdout.write(self.style.ERROR('Solr is not configured so no search notifications will be sent'))
@@ -274,7 +289,7 @@ class Command(BaseCommand):
 
         return search_updates
 
-    def find_person_updates(self, person_ids):
+    def find_person_updates(self, person_ids, minutes=15):
         # If person sponsors something new
         # If bill sponsored by person has new or updated action
 
@@ -382,7 +397,7 @@ class Command(BaseCommand):
 
         return update_groups
 
-    def find_committee_action_updates(self, committee_ids):
+    def find_committee_action_updates(self, committee_ids, minutes=15):
         # New actions taken by a committee on a bill
 
         new_actions = '''
@@ -455,7 +470,7 @@ class Command(BaseCommand):
 
         return committee_updates
 
-    def find_committee_event_updates(self, committee_ids):
+    def find_committee_event_updates(self, committee_ids, minutes=15):
         new_events = '''
             SELECT * FROM (
             SELECT DISTINCT ON (committee.ocd_id, event.ocd_id)
@@ -507,7 +522,7 @@ class Command(BaseCommand):
 
         return updates
 
-    def find_new_events(self):
+    def find_new_events(self, minutes=15):
         new_events = '''
             SELECT * FROM (
             SELECT DISTINCT ON (event.ocd_id)
@@ -532,7 +547,7 @@ class Command(BaseCommand):
 
         return [dict(zip(columns, r)) for r in cursor]
 
-    def find_updated_events(self):
+    def find_updated_events(self, minutes=15):
         new_events = '''
             SELECT * FROM (
             SELECT DISTINCT ON (event.ocd_id)

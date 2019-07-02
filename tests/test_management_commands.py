@@ -1,6 +1,10 @@
+import datetime
+import pytz
+
 import pytest
 import requests
 from django.core.management import call_command
+from django.conf import settings
 from councilmatic_core import models as councilmatic_models
 from opencivicdata.legislative import models as ocd_legislative_models
 from notifications import models as notifications_models
@@ -15,10 +19,11 @@ def test_find_bill_action_updates(db, setup):
         bill=bill,
         organization=councilmatic_models.Organization.objects.first(),
         description='test action',
-        order=1
+        order=1,
+        date=datetime.datetime.now(pytz.timezone(settings.TIME_ZONE)).strftime('%Y-%m-%d %H:%M:%S%z')
     )
     command = Command()
-    bill_action_updates = command.find_bill_action_updates([bill.id])
+    bill_action_updates = command.find_bill_action_updates([bill.id], minutes=15)
     assert len(bill_action_updates) == 1
     assert bill_action_updates[0][0]['slug'] == bill.slug
     assert bill_action_updates[0][1]['description'] == action.description

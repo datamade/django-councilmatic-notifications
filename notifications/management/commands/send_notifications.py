@@ -17,7 +17,7 @@ from django.core.mail import EmailMultiAlternatives
 
 from django.db import transaction, connection
 from django.db import models as django_models
-from django.db.models.functions import Cast
+from django.db.models.functions import Cast, Coalesce
 from django.db.utils import ProgrammingError
 
 from django.template.loader import get_template
@@ -49,6 +49,19 @@ class Command(BaseCommand):
             default=15,
             type=int,
             help='How many minutes ago to set the threshold for considering an update to be "new".'
+        )
+
+    def get_threshold(self, minutes):
+        """
+        Return the date threshold after which objects should be considered
+        new enough to warrant a notification.
+
+        :param minutes: The number of minutes before the current time to set the threshold.
+        :return: A datetime object representing the threshold.
+        """
+        return (
+            datetime.now(pytz.timezone(settings.TIME_ZONE)) -
+            timedelta(minutes=minutes)
         )
 
     def handle(self, *args, **options):
@@ -201,10 +214,15 @@ class Command(BaseCommand):
 
     def find_bill_action_updates(self, bill_ids, minutes=15):
         new_actions = ocd_legislative_models.BillAction.objects.annotate(
-            action_date=Cast('date', django_models.DateTimeField())
+            action_date=Cast(
+                # If the 'date' is null, set it beyond the threshold to
+                # prevent it from matching the filter
+                Coalesce('date', django_models.Value(self.get_threshold(minutes+1))),
+                django_models.DateTimeField()
+            )
         ).filter(
             bill__id__in=bill_ids,
-            action_date__gte=(datetime.now(pytz.timezone(settings.TIME_ZONE)) - timedelta(minutes=minutes))
+            action_date__gte=self.get_threshold(minutes)
         )
 
         bill_action_updates = []
@@ -256,30 +274,21 @@ class Command(BaseCommand):
 
             ocd_ids = tuple(r['ocd_id'] for r in results.json()['response']['docs'])
 
-
-            new_bills = '''
-                SELECT DISTINCT ON (bill.ocd_id)
-                  bill.slug AS bill_slug,
-                  bill.identifier AS bill_identifier,
-                  bill.description AS bill_description
-                FROM new_bill AS new
-                JOIN councilmatic_core_bill AS bill
-                  ON new.ocd_id = bill.ocd_id
-                WHERE new.ocd_id IN %s
-            '''
-
             if ocd_ids:
-                cursor.execute(new_bills, [ocd_ids])
+                new_bills = councilmatic_models.Bill.objects.filter(
+                    id__in=ocd_ids,
+                    created_at__gte=self.get_threshold(minutes)
+                )
 
                 bills = []
 
-                for row in cursor:
-                    bill = {
-                        'slug': row[0],
-                        'identifier': row[1],
-                        'description': row[2]
+                for bill in new_bills:
+                    bill_attrs = {
+                        'slug': bill.slug,
+                        'identifier': bill.identifier,
+                        'description': bill.title,
                     }
-                    bills.append(bill)
+                    bills.append(bill_attrs)
 
                 if bills:
                     search_updates.append({
@@ -290,237 +299,123 @@ class Command(BaseCommand):
         return search_updates
 
     def find_person_updates(self, person_ids, minutes=15):
-        # If person sponsors something new
-        # If bill sponsored by person has new or updated action
-
-        new_sponsorships = '''
-            SELECT DISTINCT ON (person.ocd_id, bill.ocd_id)
-              person.name,
-              person.slug,
-              bill.identifier,
-              bill.slug,
-              bill.description
-            FROM new_sponsorship AS new
-            JOIN councilmatic_core_person AS person
-              ON new.person_id = person.ocd_id
-            JOIN councilmatic_core_bill AS bill
-              ON new.bill_id = bill.ocd_id
-            WHERE new.person_id IN %s
-        '''
-
-        # new_actions = '''
-        #     SELECT DISTINCT ON (person.ocd_id, bill.ocd_id)
-        #       person.name,
-        #       person.slug,
-        #       bill.identifier,
-        #       bill.slug,
-        #       bill.description,
-        #       action.description,
-        #       action.date
-        #     FROM new_action AS new
-        #     JOIN councilmatic_core_bill AS bill
-        #       ON new.bill_id = bill.ocd_id
-        #     JOIN councilmatic_core_action AS action
-        #       ON bill.ocd_id = action.bill_id
-        #     JOIN councilmatic_core_sponsorship AS sponsor
-        #       ON bill.ocd_id = sponsor.bill_id
-        #     JOIN councilmatic_core_person AS person
-        #       ON sponsor.person_id = person.ocd_id
-        #     WHERE person.ocd_id IN %s
-        # '''
-
-        person_updates = []
-
-        cursor = connection.cursor()
-        cursor.execute(new_sponsorships, [tuple(person_ids)])
-
-        for row in cursor:
-            person = {
-                'name': row[0],
-                'slug': row[1],
-            }
-            bill = {
-                'identifier': row[2],
-                'slug': row[3],
-                'description': row[4],
-                'action_description': None,
-                'action_date': None,
-                'update_type': 'New Sponsorship'
-            }
-            person_updates.append((person, bill))
-
-        # cursor.execute(new_actions, [tuple(person_ids)])
-
-        # for row in cursor:
-        #     person = {
-        #         'name': row[0],
-        #         'slug': row[1],
-        #     }
-        #     bill = {
-        #         'identifier': row[2],
-        #         'slug': row[3],
-        #         'description': row[4],
-        #         'action_description': row[5],
-        #         'action_date': row[6],
-        #         'update_type': 'New Action'
-        #     }
-        #     person_updates.append((person, bill))
-
-        # TODO: Refactor to remove all this regrouping nonsense since we are
-        # not sending notifications for when a bill that a person sponsored has
-        # an action on it.
-
-        update_groups = []
-
-        outer_grouper = lambda x: x[0]['slug']
-        person_updates = sorted(person_updates, key=outer_grouper)
-
-        inner_grouper = lambda x: x[1]['update_type']
-
-        for slug, group in itertools.groupby(person_updates, key=outer_grouper):
-            bill_group = {}
-
-            group = sorted(group, key=inner_grouper)
-
-            for update_type, inner_group in itertools.groupby(group, key=inner_grouper):
-                bill_group[update_type] = {}
-
-                for person, bill in inner_group:
-                    bill_group[update_type].update(person)
-
-                    try:
-                        bill_group[update_type]['bills'].append(bill)
-                    except KeyError:
-                        bill_group[update_type]['bills'] = [bill]
-
-            update_groups.append(bill_group)
-
-        return update_groups
-
-    def find_committee_action_updates(self, committee_ids, minutes=15):
-        # New actions taken by a committee on a bill
-
-        new_actions = '''
-            SELECT DISTINCT ON (committee.ocd_id, bill.ocd_id, action.id)
-              committee.name,
-              committee.slug,
-              bill.identifier,
-              bill.slug,
-              bill.description,
-              action.description,
-              action.date,
-              action.order
-            FROM councilmatic_core_organization AS committee
-            JOIN councilmatic_core_action AS action
-              ON committee.ocd_id = action.organization_id
-            JOIN councilmatic_core_bill AS bill
-              ON action.bill_id = bill.ocd_id
-            JOIN new_action AS new
-              ON bill.ocd_id = new.bill_id
-            WHERE committee.ocd_id IN %s
-            ORDER BY committee.ocd_id,
-                     bill.ocd_id,
-                     action.id,
-                     action.order DESC
-        '''
-
-        cursor = connection.cursor()
-        cursor.execute(new_actions, [tuple(committee_ids)])
-
-        committee_updates = []
-
-        outer_grouper = lambda x: x[1]
-        inner_grouper = lambda x: x[3]
-        groups = sorted(cursor, key=outer_grouper)
-
-        for committee_slug, group in itertools.groupby(groups, key=outer_grouper):
-
-            group = sorted(group, key=inner_grouper)
-
-            committee_group = {
-                'name': group[0][0],
-                'slug': group[0][1],
+        # Set a base dictionary providing the output data structure for an update
+        base_update_dct = {
+            'New sponsorships': {
+                'slug': '',
+                'name': '',
                 'bills': []
             }
+        }
+        person_updates = []
+        for person_id in person_ids:
+            new_sponsorships = councilmatic_models.BillSponsorship.objects.filter(
+                bill__created_at__gte=self.get_threshold(minutes),
+                person__id=person_id
+            )
+            if new_sponsorships.count() > 0:
+                person_update = base_update_dct.copy()
+                person = councilmatic_models.Person.objects.get(id=person_id)
+                person_update['New sponsorships'].update({
+                    'name': person.name,
+                    'slug': person.slug,
+                })
+                for sponsorship in new_sponsorships:
+                    person_update['New sponsorships']['bills'].append({
+                        'identifier': sponsorship.bill.identifier,
+                        'slug': sponsorship.bill.slug,
+                        'description': sponsorship.bill.title,
+                    })
+                person_updates.append(person_update)
+        return person_updates
 
-
-            for bill_slug, bill_group in itertools.groupby(group, key=inner_grouper):
-
-                bill_group = list(bill_group)
-
-                bill = {
-                    'identifier': bill_group[0][2],
-                    'slug': bill_group[0][3],
-                    'description': bill_group[0][4],
-                    'actions': []
+    def find_committee_action_updates(self, committee_ids, minutes=15):
+        committee_updates = []
+        for committee_id in committee_ids:
+            new_actions = councilmatic_models.BillAction.objects.annotate(
+                action_date=Cast(
+                    Coalesce(
+                        'date',
+                        django_models.Value(str(self.get_threshold(minutes+1)))
+                    ),
+                    django_models.DateTimeField()
+                )
+            ).filter(
+                organization__id=committee_id,
+                action_date__gte=self.get_threshold(minutes)
+            )
+            if new_actions.count() > 0:
+                committee = councilmatic_models.Organization.objects.get(
+                    id=committee_id
+                )
+                committee_update = {
+                    'name': committee.name,
+                    'slug': committee.slug,
+                    'bills': {}
                 }
-
-
-                for row in sorted(bill_group, key=lambda x: x[7], reverse=True):
-                    action = {
-                        'description': row[5],
-                        'date': row[6]
-                    }
-
-                    bill['actions'].append(action)
-
-                committee_group['bills'].append(bill)
-
-            committee_updates.append(committee_group)
-
+                for action in new_actions.distinct(
+                    'date', 'organization__id', 'bill__id', 'id'
+                ).order_by('-date'):
+                    # Check if the bill is already initialized in the
+                    # committee_update object
+                    if not committee_update['bills'].get(action.bill.id):
+                        committee_update['bills'][action.bill.id] = {
+                            'identifier': action.bill.identifier,
+                            'slug': action.bill.slug,
+                            'description': action.bill.title,
+                            'actions': []
+                        }
+                    committee_update['bills'][action.bill.id]['actions'].append({
+                        'date': action.date,
+                        'description': action.description
+                    })
+                # Flatten the dict of bills to a list to match the data structure
+                # expected by the template
+                committee_update['bills'] = list(committee_update['bills'].values())
+                committee_updates.append(committee_update)
         return committee_updates
 
     def find_committee_event_updates(self, committee_ids, minutes=15):
-        new_events = '''
-            SELECT * FROM (
-            SELECT DISTINCT ON (committee.ocd_id, event.ocd_id)
-              committee.name,
-              committee.slug,
-              event.*
-            FROM councilmatic_core_event AS event
-            JOIN new_event AS new
-              ON event.ocd_id = new.ocd_id
-            JOIN councilmatic_core_eventparticipant AS p
-              ON event.ocd_id = p.event_id
-            JOIN councilmatic_core_organization AS committee
-              ON p.entity_name = committee.name
-            WHERE committee.ocd_id IN %s
-              AND event.start_time > NOW()
-            ORDER BY committee.ocd_id,
-                     event.ocd_id
-            ) AS events
-            ORDER BY events.start_time DESC
-        '''
-
-        cursor = connection.cursor()
-        cursor.execute(new_events, [tuple(committee_ids)])
-        columns = [c[0] for c in cursor.description]
-
-        updates = []
-
-        grouper = lambda x: x[1]
-        event_groups = sorted(cursor, key=grouper)
-
-        for slug, group in itertools.groupby(event_groups, key=grouper):
-            group = list(group)
-
-            committee = {
-                'name': group[0][0],
-                'slug': group[0][1],
-                'events': []
-            }
-
-            for row in group:
-                event = dict(zip(columns[2:], row[2:]))
-                committee['events'].append(event)
-
-            committee['events'] = sorted(committee['events'],
-                                         key=lambda x: x['start_time'],
-                                         reverse=True)
-
-            updates.append(committee)
-
-        return updates
+        committee_updates = []
+        for committee_id in committee_ids:
+            new_event_particip = ocd_legislative_models.EventParticipant.objects.annotate(
+                event_start_date=Cast(
+                    Coalesce(
+                        'event__start_date',
+                        # If 'start_date' is null, set it to the current time
+                        # to prevent it from matching the filter
+                        django_models.Value(
+                            str(datetime.now(pytz.timezone(settings.TIME_ZONE)))
+                        )
+                    ),
+                    django_models.DateTimeField()
+                )
+            ).filter(
+                organization__id=committee_id,
+                event__created_at__gte=self.get_threshold(minutes),
+                event_start_date__gte=datetime.now(pytz.timezone(settings.TIME_ZONE))
+            )
+            if new_event_particip.count() > 0:
+                committee = councilmatic_models.Organization.objects.get(
+                    id=committee_id
+                )
+                committee_update = {
+                    'name': committee.name,
+                    'slug': committee.slug,
+                    'events': []
+                }
+                for event_particip in new_event_particip.distinct(
+                    'event__start_date', 'organization__id', 'event__id'
+                ).order_by('-event__start_date'):
+                    event = event_particip.event.councilmatic_event
+                    committee_update['events'].append({
+                        'slug': event.slug,
+                        'name': event.name,
+                        'start_date': event.start_date,
+                        'description': event.description
+                    })
+                committee_updates.append(committee_update)
+        return committee_updates
 
     def find_new_events(self, minutes=15):
         new_events = '''

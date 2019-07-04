@@ -52,14 +52,18 @@ def test_find_bill_search_updates(db, setup, mocker):
     command = Command()
     bill_search_updates = command.find_bill_search_updates([{'term': 'test', 'facets': {}}])
     assert len(bill_search_updates) == 1
-    assert len(bill_search_updates['bills']) == 1
-    assert bill_search_updates['bills'][0]['identifier'] == bill.identifier
+    assert len(bill_search_updates[0]['bills']) == 1
+    assert bill_search_updates[0]['bills'][0]['identifier'] == bill.identifier
 
 
 @pytest.mark.django_db
 def test_find_person_updates(db, setup):
-    bill = councilmatic_models.Bill.objects.first()
     person = councilmatic_models.Person.objects.first()
+    bill = councilmatic_models.Bill.objects.create(
+        legislative_session=ocd_legislative_models.LegislativeSession.objects.first(),
+        from_organization=councilmatic_models.Organization.objects.first(),
+        identifier='test bill'
+    )
     councilmatic_models.BillSponsorship.objects.create(
         bill=bill,
         organization=councilmatic_models.Organization.objects.first(),
@@ -68,6 +72,8 @@ def test_find_person_updates(db, setup):
     command = Command()
     person_updates = command.find_person_updates([person.id])
     assert len(person_updates) == 1
+    assert person_updates[0]['New sponsorships']['name'] == person.name
+    assert person_updates[0]['New sponsorships']['slug'] == person.slug
     assert person_updates[0]['New sponsorships']['bills'][0]['slug'] == bill.slug
 
 
@@ -79,12 +85,14 @@ def test_find_committee_action_updates(db, setup):
         bill=bill,
         organization=organization,
         description='test action 1',
+        date=datetime.datetime.now(pytz.timezone(settings.TIME_ZONE)).strftime('%Y-%m-%d %H:%M:%S%z'),
         order=1
     )
     second_action = councilmatic_models.BillAction.objects.create(
         bill=bill,
         organization=organization,
         description='test action 2',
+        date=datetime.datetime.now(pytz.timezone(settings.TIME_ZONE)).strftime('%Y-%m-%d %H:%M:%S%z'),
         order=2
     )
     command = Command()
@@ -103,6 +111,10 @@ def test_find_committee_event_updates(db, setup):
     organization = councilmatic_models.Organization.objects.first()
     event = councilmatic_models.Event.objects.create(
         name='test event',
+        start_date=(
+            datetime.datetime.now(pytz.timezone(settings.TIME_ZONE)) +
+            datetime.timedelta(minutes=15)
+        ).strftime('%Y-%m-%d %H:%M:%S%z'),
         jurisdiction=organization.jurisdiction
     )
     ocd_legislative_models.EventParticipant.objects.create(

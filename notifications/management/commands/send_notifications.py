@@ -17,6 +17,7 @@ from django.core.mail import EmailMultiAlternatives
 
 from django.db import transaction, connection
 from django.db import models as django_models
+from django.db.models import Case, When, Value
 from django.db.models.functions import Cast, Coalesce
 from django.db.utils import ProgrammingError
 
@@ -215,9 +216,18 @@ class Command(BaseCommand):
     def find_bill_action_updates(self, bill_ids, minutes=15):
         new_actions = ocd_legislative_models.BillAction.objects.annotate(
             action_date=Cast(
+                Coalesce(
+                    # Cast empty string to null for 'date' field
+                    Case(
+                        When(date__exact='', then=None),
+                        When(date__isnull=False, then='date'),
+                        default=None,
+                        ouput_field=django_models.CharField()
+                    ),
+                    Value(str(self.get_threshold(minutes+1)))
+                ),
                 # If the 'date' is null, set it beyond the threshold to
                 # prevent it from matching the filter
-                Coalesce('date', django_models.Value(self.get_threshold(minutes+1))),
                 django_models.DateTimeField()
             )
         ).filter(
@@ -335,8 +345,13 @@ class Command(BaseCommand):
             new_actions = councilmatic_models.BillAction.objects.annotate(
                 action_date=Cast(
                     Coalesce(
-                        'date',
-                        django_models.Value(str(self.get_threshold(minutes+1)))
+                        Case(
+                            When(date__exact='', then=None),
+                            When(date__isnull=False, then='date'),
+                            default=None,
+                            ouput_field=django_models.CharField()
+                        ),
+                        Value(str(self.get_threshold(minutes+1)))
                     ),
                     django_models.DateTimeField()
                 )
@@ -381,10 +396,15 @@ class Command(BaseCommand):
             new_event_particip = ocd_legislative_models.EventParticipant.objects.annotate(
                 event_start_date=Cast(
                     Coalesce(
-                        'event__start_date',
+                        Case(
+                            When(event__start_date__exact='', then=None),
+                            When(event__start_date__isnull=False, then='event__start_date'),
+                            default=None,
+                            ouput_field=django_models.CharField()
+                        ),
                         # If 'start_date' is null, set it to the current time
                         # to prevent it from matching the filter
-                        django_models.Value(
+                        Value(
                             str(datetime.now(pytz.timezone(settings.TIME_ZONE)))
                         )
                     ),
@@ -418,54 +438,68 @@ class Command(BaseCommand):
         return committee_updates
 
     def find_new_events(self, minutes=15):
-        new_events = '''
-            SELECT * FROM (
-            SELECT DISTINCT ON (event.ocd_id)
-              event.name,
-              event.start_time,
-              event.end_time,
-              event.slug,
-              event.all_day,
-              event.location_name,
-              event.slug
-            FROM councilmatic_core_event AS event
-            JOIN new_event AS new
-              ON event.ocd_id = new.ocd_id
-            WHERE event.start_time > NOW()
-            ) AS events
-            ORDER BY events.start_time
-        '''
+        new_events_q = councilmatic_models.Event.objects.annotate(
+            start_datetime=Cast(
+                Coalesce(
+                    Case(
+                        When(start_date__exact='', then=None),
+                        When(start_date__isnull=False, then='start_date'),
+                        default=None,
+                        ouput_field=django_models.CharField()
+                    ),
+                    Value(str(datetime.now(pytz.timezone(settings.TIME_ZONE))))
+                ),
+                django_models.DateTimeField()
+            )
+        ).filter(
+            created_at__gte=self.get_threshold(minutes),
+            start_datetime__gte=datetime.now(pytz.timezone(settings.TIME_ZONE))
+        ).distinct('start_datetime', 'id').order_by('start_datetime')
 
-        cursor = connection.cursor()
-        cursor.execute(new_events)
-        columns = [c[0] for c in cursor.description]
-
-        return [dict(zip(columns, r)) for r in cursor]
+        new_events = []
+        for event in new_events_q:
+            new_events.append({
+                'name': event.name,
+                'start_time': event.start_date,
+                'end_time': event.end_date,
+                'slug': event.slug,
+                'all_day': event.all_day,
+                'location_name': event.location.name,
+            })
+        return new_events
 
     def find_updated_events(self, minutes=15):
-        new_events = '''
-            SELECT * FROM (
-            SELECT DISTINCT ON (event.ocd_id)
-              event.name,
-              event.start_time,
-              event.end_time,
-              event.slug,
-              event.all_day,
-              event.location_name,
-              event.slug
-            FROM councilmatic_core_event AS event
-            JOIN change_event AS change
-              ON event.ocd_id = change.ocd_id
-            WHERE event.start_time > NOW()
-            ) AS events
-            ORDER BY events.start_time
-        '''
+        updated_events_q = councilmatic_models.Event.objects.annotate(
+            start_datetime=Cast(
+                Coalesce(
+                    Case(
+                        When(start_date__exact='', then=None),
+                        When(start_date__isnull=False, then='start_date'),
+                        default=None,
+                        ouput_field=django_models.CharField()
+                    ),
+                    Value(str(datetime.now(pytz.timezone(settings.TIME_ZONE))))
+                ),
+                django_models.DateTimeField()
+            )
+        ).filter(
+            created_at__lte=self.get_threshold(minutes),
+            updated_at__gte=self.get_threshold(minutes),
+            start_datetime__gte=datetime.now(pytz.timezone(settings.TIME_ZONE))
+        ).distinct('start_datetime', 'id').order_by('start_datetime')
 
-        cursor = connection.cursor()
-        cursor.execute(new_events)
-        columns = [c[0] for c in cursor.description]
+        updated_events = []
+        for event in updated_events_q:
+            updated_events.append({
+                'name': event.name,
+                'start_time': event.start_date,
+                'end_time': event.end_date,
+                'slug': event.slug,
+                'all_day': event.all_day,
+                'location_name': event.location.name,
+            })
+        return updated_events
 
-        return [dict(zip(columns, r)) for r in cursor]
 
 @django_rq.job
 def send_notification_email(user_id=None,

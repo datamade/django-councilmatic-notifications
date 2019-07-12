@@ -379,7 +379,7 @@ class Command(BaseCommand):
         new_events_q = councilmatic_models.Event.objects.filter(
             created_at__gte=self.get_threshold(minutes),
             start_time__gte=datetime.now(pytz.timezone(settings.TIME_ZONE))
-        ).distinct('start_time', 'id').order_by('-start_time')
+        ).order_by('-start_time')
 
         new_events = []
         for event in new_events_q:
@@ -398,7 +398,7 @@ class Command(BaseCommand):
             created_at__lte=self.get_threshold(minutes),
             updated_at__gte=self.get_threshold(minutes),
             start_time__gte=datetime.now(pytz.timezone(settings.TIME_ZONE))
-        ).distinct('start_time', 'id').order_by('start_time')
+        ).order_by('start_time')
 
         updated_events = []
         for event in updated_events_q:

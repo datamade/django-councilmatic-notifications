@@ -11,13 +11,6 @@ from notifications.views import notifications_login, notifications_logout, \
     search_subscribe, search_unsubscribe, events_subscribe, events_unsubscribe, \
     send_notifications
 
-if django.VERSION < (1, 11):
-    password_change = auth_views.password_change
-    password_change_done = auth_views.password_change_done
-else:
-    password_change = auth_views.PasswordChangeView.as_view
-    password_change_done = auth_views.PasswordChangeDoneView.as_view
-
 
 urlpatterns = [
     url(r'^login/$', notifications_login, name='notifications_login'),
@@ -59,10 +52,10 @@ urlpatterns = [
 
     # URLs for password resets and changes.
     url(r'', include('password_reset.urls')),
-    url(r'^password/change/$', password_change, {
+    url(r'^password/change/$', auth_views.PasswordChangeView.as_view(), {
         'template_name': 'password_change_form.html'},
         name='password_change'),
-    url(r'^password/change/done/$', password_change_done,
+    url(r'^password/change/done/$', auth_views.PasswordChangeDoneView.as_view(),
         {'template_name': 'password_change_done.html'},
         name='password_change_done'),
 ]

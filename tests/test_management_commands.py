@@ -96,8 +96,8 @@ def test_find_new_events(new_events):
     command = Command()
     found_events = command.find_new_events()
     assert len(found_events) == 2
-    assert found_events[0]['name'] == new_events[0].name
-    assert found_events[1]['name'] == new_events[1].name
+    assert found_events[0]['name'] == new_events[1].name
+    assert found_events[1]['name'] == new_events[0].name
 
 
 @pytest.mark.django_db

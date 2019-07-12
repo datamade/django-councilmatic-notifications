@@ -19,10 +19,7 @@ from django.core.mail import EmailMessage
 from django.core.cache import cache
 from django.core import management
 
-if django.VERSION < (2, 0):
-    from django.core.urlresolvers import reverse
-else:
-    from django.urls import reverse
+from django.urls import reverse
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout

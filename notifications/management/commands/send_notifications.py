@@ -214,25 +214,9 @@ class Command(BaseCommand):
             self.stdout.write(json.dumps(output, default=dthandler))
 
     def find_bill_action_updates(self, bill_ids, minutes=15):
-        new_actions = ocd_legislative_models.BillAction.objects.annotate(
-            action_date=Cast(
-                Coalesce(
-                    # Cast empty string to null for 'date' field
-                    Case(
-                        When(date__exact='', then=None),
-                        When(date__isnull=False, then='date'),
-                        default=None,
-                        ouput_field=django_models.CharField()
-                    ),
-                    Value(str(self.get_threshold(minutes+1)))
-                ),
-                # If the 'date' is null, set it beyond the threshold to
-                # prevent it from matching the filter
-                django_models.DateTimeField()
-            )
-        ).filter(
+        new_actions = councilmatic_models.BillAction.objects.filter(
             bill__id__in=bill_ids,
-            action_date__gte=self.get_threshold(minutes)
+            date_dt__gte=self.get_threshold(minutes)
         )
 
         bill_action_updates = []
@@ -342,22 +326,9 @@ class Command(BaseCommand):
     def find_committee_action_updates(self, committee_ids, minutes=15):
         committee_updates = []
         for committee_id in committee_ids:
-            new_actions = councilmatic_models.BillAction.objects.annotate(
-                action_date=Cast(
-                    Coalesce(
-                        Case(
-                            When(date__exact='', then=None),
-                            When(date__isnull=False, then='date'),
-                            default=None,
-                            ouput_field=django_models.CharField()
-                        ),
-                        Value(str(self.get_threshold(minutes+1)))
-                    ),
-                    django_models.DateTimeField()
-                )
-            ).filter(
+            new_actions = councilmatic_models.BillAction.objects.filter(
                 organization__id=committee_id,
-                action_date__gte=self.get_threshold(minutes)
+                date_dt__gte=self.get_threshold(minutes)
             )
             if new_actions.count() > 0:
                 committee = councilmatic_models.Organization.objects.get(
@@ -368,9 +339,7 @@ class Command(BaseCommand):
                     'slug': committee.slug,
                     'bills': {}
                 }
-                for action in new_actions.distinct(
-                    'date', 'organization__id', 'bill__id', 'id'
-                ).order_by('-date'):
+                for action in new_actions.order_by('-date_dt'):
                     # Check if the bill is already initialized in the
                     # committee_update object
                     if not committee_update['bills'].get(action.bill.id):
@@ -392,69 +361,40 @@ class Command(BaseCommand):
 
     def find_committee_event_updates(self, committee_ids, minutes=15):
         committee_updates = []
-        for committee_id in committee_ids:
-            new_event_particip = ocd_legislative_models.EventParticipant.objects.annotate(
-                event_start_date=Cast(
-                    Coalesce(
-                        Case(
-                            When(event__start_date__exact='', then=None),
-                            When(event__start_date__isnull=False, then='event__start_date'),
-                            default=None,
-                            ouput_field=django_models.CharField()
-                        ),
-                        # If 'start_date' is null, set it to the current time
-                        # to prevent it from matching the filter
-                        Value(
-                            str(datetime.now(pytz.timezone(settings.TIME_ZONE)))
-                        )
-                    ),
-                    django_models.DateTimeField()
+        new_events = councilmatic_models.Event.objects.filter(
+            participants__organization__id__in=committee_ids,
+            created_at__gte=self.get_threshold(minutes),
+            start_time__gte=datetime.now(pytz.timezone(settings.TIME_ZONE))
+        )
+        if new_events.count() > 0:
+            for committee_id in committee_ids:
+                new_event_for_committee = new_events.filter(
+                    participants__organization__id=committee_id
                 )
-            ).filter(
-                organization__id=committee_id,
-                event__created_at__gte=self.get_threshold(minutes),
-                event_start_date__gte=datetime.now(pytz.timezone(settings.TIME_ZONE))
-            )
-            if new_event_particip.count() > 0:
-                committee = councilmatic_models.Organization.objects.get(
-                    id=committee_id
-                )
-                committee_update = {
-                    'name': committee.name,
-                    'slug': committee.slug,
-                    'events': []
-                }
-                for event_particip in new_event_particip.distinct(
-                    'event__start_date', 'organization__id', 'event__id'
-                ).order_by('-event__start_date'):
-                    event = event_particip.event.councilmatic_event
-                    committee_update['events'].append({
-                        'slug': event.slug,
-                        'name': event.name,
-                        'start_date': event.start_date,
-                        'description': event.description
-                    })
-                committee_updates.append(committee_update)
+                if new_event_for_committee.count() > 0:
+                    committee = councilmatic_models.Organization.objects.get(
+                        id=committee_id
+                    )
+                    committee_update = {
+                        'name': committee.name,
+                        'slug': committee.slug,
+                        'events': []
+                    }
+                    for event in new_event_for_committee.order_by('-start_time'):
+                        committee_update['events'].append({
+                            'slug': event.slug,
+                            'name': event.name,
+                            'start_date': event.start_date,
+                            'description': event.description
+                        })
+                    committee_updates.append(committee_update)
         return committee_updates
 
     def find_new_events(self, minutes=15):
-        new_events_q = councilmatic_models.Event.objects.annotate(
-            start_datetime=Cast(
-                Coalesce(
-                    Case(
-                        When(start_date__exact='', then=None),
-                        When(start_date__isnull=False, then='start_date'),
-                        default=None,
-                        ouput_field=django_models.CharField()
-                    ),
-                    Value(str(datetime.now(pytz.timezone(settings.TIME_ZONE))))
-                ),
-                django_models.DateTimeField()
-            )
-        ).filter(
+        new_events_q = councilmatic_models.Event.objects.filter(
             created_at__gte=self.get_threshold(minutes),
-            start_datetime__gte=datetime.now(pytz.timezone(settings.TIME_ZONE))
-        ).distinct('start_datetime', 'id').order_by('start_datetime')
+            start_time__gte=datetime.now(pytz.timezone(settings.TIME_ZONE))
+        ).distinct('start_time', 'id').order_by('-start_time')
 
         new_events = []
         for event in new_events_q:
@@ -469,24 +409,11 @@ class Command(BaseCommand):
         return new_events
 
     def find_updated_events(self, minutes=15):
-        updated_events_q = councilmatic_models.Event.objects.annotate(
-            start_datetime=Cast(
-                Coalesce(
-                    Case(
-                        When(start_date__exact='', then=None),
-                        When(start_date__isnull=False, then='start_date'),
-                        default=None,
-                        ouput_field=django_models.CharField()
-                    ),
-                    Value(str(datetime.now(pytz.timezone(settings.TIME_ZONE))))
-                ),
-                django_models.DateTimeField()
-            )
-        ).filter(
+        updated_events_q = councilmatic_models.Event.objects.filter(
             created_at__lte=self.get_threshold(minutes),
             updated_at__gte=self.get_threshold(minutes),
-            start_datetime__gte=datetime.now(pytz.timezone(settings.TIME_ZONE))
-        ).distinct('start_datetime', 'id').order_by('start_datetime')
+            start_time__gte=datetime.now(pytz.timezone(settings.TIME_ZONE))
+        ).distinct('start_time', 'id').order_by('start_time')
 
         updated_events = []
         for event in updated_events_q:

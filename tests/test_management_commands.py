@@ -24,6 +24,17 @@ def test_find_bill_action_updates(new_bill, new_bill_actions):
 
 
 @pytest.mark.django_db
+def test_find_bill_action_updates_skips_null_dates(new_bill, new_bill_actions):
+    for bill_action in new_bill_actions:
+        # Null dates are saved as empty strings in the OCD data model
+        bill_action.date = ''
+        bill_action.save()
+    command = Command()
+    bill_action_updates = command.find_bill_action_updates([new_bill.id], minutes=15)
+    assert len(bill_action_updates) == 0
+
+
+@pytest.mark.django_db
 def test_find_bill_search_updates(new_bill, mocker):
     new_response = mocker.MagicMock(spec=requests.Response)
     new_response.json.return_value = {
@@ -98,6 +109,17 @@ def test_find_new_events(new_events):
     assert len(found_events) == 2
     assert found_events[0]['name'] == new_events[1].name
     assert found_events[1]['name'] == new_events[0].name
+
+
+@pytest.mark.django_db
+def test_find_new_events_skips_null_dates(new_events):
+    for event in new_events:
+        # Null dates are saved as empty strings in the OCD data model
+        event.start_date = ''
+        event.save()
+    command = Command()
+    found_events = command.find_new_events()
+    assert len(found_events) == 0
 
 
 @pytest.mark.django_db

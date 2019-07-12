@@ -1,32 +1,17 @@
 # -*- coding: utf-8 -*-
 
-import os
 import json
-from collections import OrderedDict
-import itertools
-import requests
 from datetime import datetime, date, timedelta
-from io import StringIO
 
+import requests
 import django_rq
-import pysolr
 import pytz
-
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.core.mail import EmailMultiAlternatives
-
-from django.db import transaction, connection
-from django.db import models as django_models
-from django.db.models import Case, When, Value
-from django.db.models.functions import Cast, Coalesce
-from django.db.utils import ProgrammingError
-
+from django.db import connection
 from django.template.loader import get_template
 from django.conf import settings
 
-from django.contrib.auth.models import User
-
-from opencivicdata.legislative import models as ocd_legislative_models
 from councilmatic_core import models as councilmatic_models
 
 try:

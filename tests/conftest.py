@@ -53,7 +53,7 @@ def new_bill_actions(new_bill):
             datetime.datetime.now(pytz.timezone(settings.TIME_ZONE)) +
             datetime.timedelta(minutes=1)
         ).strftime('%Y-%m-%d %H:%M:%S%z'),
-        order=1
+        order=2
     )
     second_action = BillAction.objects.create(
         bill=new_bill,
@@ -63,7 +63,7 @@ def new_bill_actions(new_bill):
             datetime.datetime.now(pytz.timezone(settings.TIME_ZONE)) +
             datetime.timedelta(minutes=2)
         ).strftime('%Y-%m-%d %H:%M:%S%z'),
-        order=2
+        order=3
     )
     return first_action, second_action
 

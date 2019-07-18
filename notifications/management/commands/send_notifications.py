@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+from itertools import chain
 from datetime import datetime, date, timedelta
 
 import requests
@@ -27,16 +28,31 @@ class Command(BaseCommand):
             help='Comma separated list of usernames to send notifications to.'
         )
 
+    def _is_empty(self, elem):
+        return len(elem) > 0
+
     def handle(self, *args, **options):
         subscribed_users = User.objects.filter(subscriptions__isnull=False)
         for user in subscribed_users:
-            bill_action_updates = [sub.get_updates() for sub in user.billactionsubscription.all()]
-            committee_action_updates = [sub.get_updates() for sub in user.committeeactionsubscription.all()]
-            committee_event_updates = [sub.get_updates() for sub in user.committeeeventsubscription.all()]
-            person_updates = [sub.get_updates() for sub in user.personsubscription.all()]
+            # BillActionSubscription.get_updates() returns a list, so make
+            # sure to flatten the outer list.
+            bill_action_updates = filter(self._is_empty, chain.from_iterable([
+                sub.get_updates() for sub in user.billactionsubscription.all()
+            ]))
+            committee_action_updates = filter(self._is_empty, [
+                sub.get_updates() for sub in user.committeeactionsubscription.all()
+            ])
+            committee_event_updates = filter(self._is_empty, [
+                sub.get_updates() for sub in user.committeeeventsubscription.all()
+            ])
+            person_updates = filter(self._is_empty, [
+                sub.get_updates() for sub in user.personsubscription.all()
+            ])
 
             try:
-                bill_search_updates = [sub.get_updates() for sub in user.billsearchsubscription.all()]
+                bill_search_updates = filter(self._is_empty, [
+                    sub.get_updates() for sub in user.billsearchsubscription.all()
+                ])
             except AttributeError:
                 self.stdout.write(self.style.ERROR('Solr is not configured so no search notifications will be sent'))
                 bill_search_updates = []

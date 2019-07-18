@@ -86,7 +86,7 @@ class PersonSubscription(Subscription):
         return person_update
 
 
-class BillAction(models.Model):
+class BillActionSubscription(Subscription):
     bill = models.ForeignKey(
         councilmatic_models.Bill,
         related_name='subscriptions',
@@ -95,9 +95,6 @@ class BillAction(models.Model):
     # The last BillAction.order that the user has seen. Use this to determine
     # which BillActions are new.
     last_seen_order = models.PositiveIntegerField(default=0)
-
-
-class BillActionSubscription(Subscription, BillAction):
 
     def get_updates(self):
         bill_action_updates = []
@@ -118,10 +115,22 @@ class BillActionSubscription(Subscription, BillAction):
             }
             bill_action_updates.append((bill, action))
 
-        self.last_seen_order = new_actions.aggregate(Max('order'))
-        self.save()
+        if new_actions.count() > 0:
+            self.last_seen_order = new_actions.aggregate(max=Max('order'))['max']
+            self.save()
 
         return bill_action_updates
+
+
+class CommitteeActionSubscriptionBill(models.Model):
+    bill = models.ForeignKey(
+        councilmatic_models.Bill,
+        related_name='committee_subscriptions',
+        on_delete=models.CASCADE
+    )
+    # The last BillAction.order that the user has seen. Use this to determine
+    # which BillActions are new.
+    last_seen_order = models.PositiveIntegerField(default=0)
 
 
 class CommitteeActionSubscription(Subscription):
@@ -130,16 +139,16 @@ class CommitteeActionSubscription(Subscription):
         related_name='subscriptions_actions',
         on_delete=models.CASCADE
     )
-    seen_bill_actions = models.ManyToManyField(BillAction)
+    seen_bills = models.ManyToManyField(CommitteeActionSubscriptionBill)
 
     @property
     def seen_bill_ids(self):
-        return [ba.bill.id for ba in self.seen_bill_actions]
+        return [ba.bill.id for ba in self.seen_bills]
 
     def _get_updated_actions_by_bill(self):
         # {bill: 'actions': [bill_actions], 'last_seen_order': last_seen_order}
         existing_actions = {}
-        for bill in self.seen_bill_actions:
+        for bill in self.seen_bills:
             actions = councilmatic_models.BillAction.objects.filter(
                 bill__id=bill.bill.id,
                 order__gte=bill.last_seen_order
@@ -174,12 +183,12 @@ class CommitteeActionSubscription(Subscription):
                     'actions': []
                 }
             bills[bill_id]['actions'].append({
-                'order:' action.order,
+                'order': action.order,
                 'date': action.date,
                 'description': action.description
             })
         for bill_id, bill_metadata in bills.items():
-            self.seen_bill_actions.add(BillAction.objects.create(
+            self.seen_bills.add(CommitteeActionSubscriptionBill.objects.create(
                 bill=councilmatic_models.Bill.objects.get(id=bill_id),
                 last_seen_order=max(act['order'] for act in bill_metadata['actions'])
             ))
@@ -194,7 +203,7 @@ class CommitteeActionSubscription(Subscription):
             }
             bill.last_seen_order = last_seen_order
             bill.save()
-       return {
+        return {
             'name': self.committee.name,
             'slug': self.committee.slug,
             # Flatten the dict of bills to a list to match the data structure
@@ -213,7 +222,7 @@ class CommitteeEventSubscription(Subscription):
     def get_updates(self):
         new_events = councilmatic_models.Event.objects.filter(
             participants__organization__id=self.committee.id,
-            created_at__gte=self.last_datetime_updated
+            created_at__gte=self.last_datetime_updated,
             start_time__gte=timezone.now()
         )
         events = []
@@ -225,10 +234,10 @@ class CommitteeEventSubscription(Subscription):
                 'description': event.description
             })
         self.set_last_datetime_updated()
-        if len(events) > 0
+        if len(events) > 0:
             return {
-                'name': committee.name,
-                'slug': committee.slug,
+                'name': self.committee.name,
+                'slug': self.committee.slug,
                 'events': events
             }
         else:
@@ -244,50 +253,45 @@ class BillSearchSubscription(Subscription):
                 'Solr must be configured to return BillSearchSubscription updates'
             )
 
-        search_updates = []
+        term = self.search_params['term'].strip() or '*:*'
 
-        for params in self.search_params:
+        query_params = {
+            'q': term,
+            'fq': [],
+            'wt': 'json'
+        }
 
-            term = params['term'].strip() or '*:*'
+        for facet, values in self.search_params['facets'].items():
+            for value in values:
+                query_params['fq'].append('{0}:{1}'.format(facet, value))
 
-            query_params = {
-                'q': term,
-                'fq': [],
-                'wt': 'json'
-            }
+        results = requests.get('{}/select'.format(HAYSTACK_URL), params=query_params)
 
-            for facet, values in params['facets'].items():
-                for value in values:
-                    query_params['fq'].append('{0}:{1}'.format(facet, value))
+        ocd_ids = tuple(r['ocd_id'] for r in results.json()['response']['docs'])
 
-            results = requests.get('{}/select'.format(HAYSTACK_URL), params=query_params)
+        search_update = {}
+        if ocd_ids:
+            new_bills = councilmatic_models.Bill.objects.filter(
+                id__in=ocd_ids,
+                created_at__gte=self.last_datetime_updated
+            )
+            self.set_last_datetime_updated()
 
-            ocd_ids = tuple(r['ocd_id'] for r in results.json()['response']['docs'])
+            bills = []
+            for bill in new_bills:
+                bill_attrs = {
+                    'slug': bill.slug,
+                    'identifier': bill.identifier,
+                    'description': bill.title,
+                }
+                bills.append(bill_attrs)
 
-            if ocd_ids:
-                new_bills = councilmatic_models.Bill.objects.filter(
-                    id__in=ocd_ids,
-                    created_at__gte=self.last_datetime_updated
-                )
-                self.set_last_datetime_updated()
-
-                bills = []
-                for bill in new_bills:
-                    bill_attrs = {
-                        'slug': bill.slug,
-                        'identifier': bill.identifier,
-                        'description': bill.title,
-                    }
-                    bills.append(bill_attrs)
-
-                if bills:
-                    search_updates.append({
-                        'params': params,
-                        'bills': bills
-                    })
-
-        return search_updates
-
+            if bills:
+                search_update = {
+                    'params': self.search_params,
+                    'bills': bills
+                }
+        return search_update
 
 
 class EventsSubscription(Subscription):

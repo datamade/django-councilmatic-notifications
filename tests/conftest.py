@@ -4,11 +4,13 @@ import pytest
 import pytz
 from pytest_django.fixtures import db
 from django.contrib.auth.models import User
+from django.utils import timezone
 from django.core.management import call_command
 from django.conf import settings
 
 from councilmatic_core.models import Bill, BillAction, Event, Organization
 from opencivicdata.legislative.models import EventLocation, LegislativeSession
+from notifications import models as notifications_models
 
 
 @pytest.fixture(scope='module')
@@ -100,3 +102,27 @@ def new_events(db, setup):
         location=location
     )
     return first_event, second_event
+
+
+@pytest.fixture
+@pytest.mark.django_db
+def subscriptions(user, new_bill):
+    bill_action = notifications_models.BillActionSubscription.objects.create(
+        user=user,
+        bill=new_bill
+    )
+    bill_search = notifications_models.BillSearchSubscription.objects.create(
+        user=user,
+        search_params={'term': 'test', 'facets': {}}
+    )
+
+    # Update the created_at and updated_at times for items so that they get registered
+    # as new
+    new_bill.created_at = timezone.now()
+    new_bill.updated_at = timezone.now()
+    new_bill.save()
+
+    return {
+        'bill_action': bill_action,
+        'bill_search': bill_search
+    }

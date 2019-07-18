@@ -13,29 +13,19 @@ from notifications.management.commands.send_notifications import Command
 
 
 @pytest.mark.django_db
-def test_find_bill_action_updates(new_bill, new_bill_actions):
-    command = Command()
-    bill_action_updates = command.find_bill_action_updates([new_bill.id], minutes=15)
+def test_find_bill_action_updates(new_bill, new_bill_actions, subscriptions):
+    assert subscriptions['bill_action'].last_seen_order == 0
+    bill_action_updates = subscriptions['bill_action'].get_updates()
     assert len(bill_action_updates) == 2
     assert bill_action_updates[0][0]['slug'] == new_bill.slug
     assert bill_action_updates[0][1]['description'] == new_bill_actions[0].description
     assert bill_action_updates[1][0]['slug'] == new_bill.slug
     assert bill_action_updates[1][1]['description'] == new_bill_actions[1].description
+    assert subscriptions['bill_action'].last_seen_order == new_bill_actions[1].order
 
 
 @pytest.mark.django_db
-def test_find_bill_action_updates_skips_null_dates(new_bill, new_bill_actions):
-    for bill_action in new_bill_actions:
-        # Null dates are saved as empty strings in the OCD data model
-        bill_action.date = ''
-        bill_action.save()
-    command = Command()
-    bill_action_updates = command.find_bill_action_updates([new_bill.id], minutes=15)
-    assert len(bill_action_updates) == 0
-
-
-@pytest.mark.django_db
-def test_find_bill_search_updates(new_bill, mocker):
+def test_find_bill_search_updates(new_bill, mocker, subscriptions):
     new_response = mocker.MagicMock(spec=requests.Response)
     new_response.json.return_value = {
         'response': {
@@ -49,11 +39,9 @@ def test_find_bill_search_updates(new_bill, mocker):
         return_value=new_response
     )
     mocker.patch('requests.get', new=new_requests_get)
-    command = Command()
-    bill_search_updates = command.find_bill_search_updates([{'term': 'test', 'facets': {}}])
-    assert len(bill_search_updates) == 1
-    assert len(bill_search_updates[0]['bills']) == 1
-    assert bill_search_updates[0]['bills'][0]['identifier'] == new_bill.identifier
+    bill_search_updates = subscriptions['bill_search'].get_updates()
+    assert len(bill_search_updates['bills']) == 1
+    assert bill_search_updates['bills'][0]['identifier'] == new_bill.identifier
 
 
 @pytest.mark.django_db

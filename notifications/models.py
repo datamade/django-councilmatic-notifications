@@ -82,7 +82,7 @@ class PersonSubscription(Subscription):
                     'description': sponsorship.bill.title,
                 })
         self.seen_sponsorship_ids.extend([spon.id for spon in new_sponsorships])
-        self.seen_sponsorship_ids.save()
+        self.save()
         return person_update
 
 
@@ -141,74 +141,75 @@ class CommitteeActionSubscription(Subscription):
     )
     seen_bills = models.ManyToManyField(CommitteeActionSubscriptionBill)
 
-    @property
-    def seen_bill_ids(self):
-        return [ba.bill.id for ba in self.seen_bills]
-
     def _get_updated_actions_by_bill(self):
         # {bill: 'actions': [bill_actions], 'last_seen_order': last_seen_order}
         existing_actions = {}
-        for bill in self.seen_bills:
+        for bill_sub in self.seen_bills.all():
             actions = councilmatic_models.BillAction.objects.filter(
-                bill__id=bill.bill.id,
-                order__gte=bill.last_seen_order
+                bill__id=bill_sub.bill.id,
+                order__gte=bill_sub.last_seen_order
             )
             if actions.count() > 0:
-                existing_actions[bill.bill] = {
+                existing_actions[bill_sub] = {
                     'actions': [],
-                    'last_seen_order': bill.last_seen_order
+                    'last_seen_order': bill_sub.last_seen_order
                 }
-                for action in actions:
-                    existing_actions[bill.bill]['actions'].append(action)
-                    if action.order > existing_actions[bill.bill]['last_seen_order']:
-                        existing_actions[bill.bill]['last_seen_order'] = action.order
-        return [(bill, metadata['actions'], metadata['last_seen_order'])
-                for bill, metadata in existing_actions.items()]
+                for action in actions.order_by('-date_dt'):
+                    existing_actions[bill_sub]['actions'].append(action)
+                    if action.order > existing_actions[bill_sub]['last_seen_order']:
+                        existing_actions[bill_sub]['last_seen_order'] = action.order
+        return [(bill_sub, metadata['actions'], metadata['last_seen_order'])
+                for bill_sub, metadata in existing_actions.items()]
 
     def get_updates(self):
-        bills = {}
+        # Updates for existing actions
+        updated_bills = {}
+        for bill_sub, actions, last_seen_order in self._get_updated_actions_by_bill():
+            updated_bills[bill_sub.bill.id] = {
+                'identifier': bill_sub.bill.identifier,
+                'slug': bill_sub.bill.slug,
+                'description': bill_sub.bill.title,
+                'actions': [{
+                    'date': action.date,
+                    'description': action.description,
+                    'order': action.order
+                } for action in actions]
+            }
+            bill_sub.last_seen_order = last_seen_order
+            bill_sub.save()
         # Updates for new actions
+        new_bills = {}
         new_actions = councilmatic_models.BillAction.objects.filter(
             organization__id=self.committee.id
         ).exclude(
-            bill__id__in=self.seen_bill_ids
+            bill__in=[ba.bill for ba in self.seen_bills.all()]
         )
         for action in new_actions.order_by('-date_dt'):
             bill_id = action.bill.id
-            if not bills.get(bill_id):
-                bills[bill_id] = {
+            if not new_bills.get(bill_id):
+                new_bills[bill_id] = {
                     'identifier': action.bill.identifier,
                     'slug': action.bill.slug,
                     'description': action.bill.title,
                     'actions': []
                 }
-            bills[bill_id]['actions'].append({
+            new_bills[bill_id]['actions'].append({
                 'order': action.order,
                 'date': action.date,
                 'description': action.description
             })
-        for bill_id, bill_metadata in bills.items():
+        for bill_id, bill_metadata in new_bills.items():
             self.seen_bills.add(CommitteeActionSubscriptionBill.objects.create(
                 bill=councilmatic_models.Bill.objects.get(id=bill_id),
                 last_seen_order=max(act['order'] for act in bill_metadata['actions'])
             ))
-        # Updates for existing actions
-        for bill, actions, last_seen_order in self._get_updated_actions_by_bill():
-            bills[bill.bill.id] = {
-                'identifier': bill.bill.identifier,
-                'slug': bill.bill.slug,
-                'description': bill.bill.title,
-                'actions': [{'date': action.date, 'description': action.description}
-                            for action in actions]
-            }
-            bill.last_seen_order = last_seen_order
-            bill.save()
+        # Flatten the dict of bills to a list to match the data structure
+        # expected by the template
+        all_bills = list(new_bills.values()) + list(updated_bills.values())
         return {
             'name': self.committee.name,
             'slug': self.committee.slug,
-            # Flatten the dict of bills to a list to match the data structure
-            # expected by the template
-            'bills': list(bill.values())
+            'bills': all_bills
         }
 
 

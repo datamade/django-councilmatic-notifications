@@ -8,7 +8,6 @@ from django.conf import settings
 from councilmatic_core import models as councilmatic_models
 from opencivicdata.legislative import models as ocd_legislative_models
 from notifications import models as notifications_models
-
 from notifications.management.commands.send_notifications import Command
 
 
@@ -45,33 +44,55 @@ def test_find_bill_search_updates(new_bill, mocker, subscriptions):
 
 
 @pytest.mark.django_db
-def test_find_person_updates(new_bill):
-    person = councilmatic_models.Person.objects.first()
-    councilmatic_models.BillSponsorship.objects.create(
+def test_find_person_updates(new_bill, subscriptions):
+    person = subscriptions['person'].person
+    spon = councilmatic_models.BillSponsorship.objects.create(
         bill=new_bill,
         organization=new_bill.from_organization.councilmatic_organization,
         person=person
     )
-    command = Command()
-    person_updates = command.find_person_updates([person.id])
+    person_updates = subscriptions['person'].get_updates()
     assert len(person_updates) == 1
-    assert person_updates[0]['New sponsorships']['name'] == person.name
-    assert person_updates[0]['New sponsorships']['slug'] == person.slug
-    assert person_updates[0]['New sponsorships']['bills'][0]['slug'] == new_bill.slug
+    assert person_updates['New sponsorships']['name'] == person.name
+    assert person_updates['New sponsorships']['slug'] == person.slug
+    assert person_updates['New sponsorships']['bills'][0]['slug'] == new_bill.slug
+    assert subscriptions['person'].seen_sponsorship_ids == [spon.id]
 
 
 @pytest.mark.django_db
-def test_find_committee_action_updates(new_bill, new_bill_actions):
-    organization = new_bill.from_organization.councilmatic_organization
-    command = Command()
-    committee_action_updates = command.find_committee_action_updates([organization.id])
-    assert len(committee_action_updates) == 1
-    assert committee_action_updates[0]['slug'] == organization.slug
-    assert len(committee_action_updates[0]['bills']) == 1
-    assert committee_action_updates[0]['bills'][0]['slug'] == new_bill.slug
-    assert len(committee_action_updates[0]['bills'][0]['actions']) == 2
-    assert committee_action_updates[0]['bills'][0]['actions'][0]['description'] == new_bill_actions[1].description
-    assert committee_action_updates[0]['bills'][0]['actions'][1]['description'] == new_bill_actions[0].description
+def test_find_committee_action_updates(new_bill, new_bill_actions, subscriptions):
+    organization = new_bill.from_organization
+    assert subscriptions['committee_action'].seen_bills.count() == 0
+    committee_action_updates = subscriptions['committee_action'].get_updates()
+    assert committee_action_updates['slug'] == organization.slug
+    assert len(committee_action_updates['bills']) == 1
+    assert committee_action_updates['bills'][0]['slug'] == new_bill.slug
+    assert len(committee_action_updates['bills'][0]['actions']) == 2
+    assert committee_action_updates['bills'][0]['actions'][0]['description'] == new_bill_actions[1].description
+    assert committee_action_updates['bills'][0]['actions'][1]['description'] == new_bill_actions[0].description
+    assert subscriptions['committee_action'].seen_bills.count() == 1
+    assert subscriptions['committee_action'].seen_bills.first().last_seen_order == new_bill_actions[1].order
+
+
+@pytest.mark.django_db
+def test_find_committee_action_existing_updates(new_bill, new_bill_actions, subscriptions):
+    """
+    Test finding updates to existing Bills for a committee.
+    """
+    organization = new_bill.from_organization
+    subscriptions['committee_action'].seen_bills.add(
+        notifications_models.CommitteeActionSubscriptionBill.objects.create(
+           bill=new_bill,
+           last_seen_order=0
+        )
+    )
+    committee_action_updates = subscriptions['committee_action'].get_updates()
+    assert committee_action_updates['slug'] == organization.slug
+    assert len(committee_action_updates['bills']) == 1
+    assert committee_action_updates['bills'][0]['slug'] == new_bill.slug
+    assert len(committee_action_updates['bills'][0]['actions']) == 2
+    assert subscriptions['committee_action'].seen_bills.count() == 1
+    assert subscriptions['committee_action'].seen_bills.first().last_seen_order == new_bill_actions[1].order
 
 
 @pytest.mark.django_db

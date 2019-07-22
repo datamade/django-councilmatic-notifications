@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.core.management import call_command
 from django.conf import settings
 
-from councilmatic_core.models import Bill, BillAction, Event, Organization
+from councilmatic_core.models import Bill, BillAction, Event, Organization, Person
 from opencivicdata.legislative.models import EventLocation, LegislativeSession
 from notifications import models as notifications_models
 
@@ -115,6 +115,14 @@ def subscriptions(user, new_bill):
         user=user,
         search_params={'term': 'test', 'facets': {}}
     )
+    person = notifications_models.PersonSubscription.objects.create(
+        user=user,
+        person=Person.objects.first()
+    )
+    committee_action = notifications_models.CommitteeActionSubscription.objects.create(
+        user=user,
+        committee=new_bill.from_organization
+    )
 
     # Update the created_at and updated_at times for items so that they get registered
     # as new
@@ -124,5 +132,7 @@ def subscriptions(user, new_bill):
 
     return {
         'bill_action': bill_action,
-        'bill_search': bill_search
+        'bill_search': bill_search,
+        'person': person,
+        'committee_action': committee_action
     }

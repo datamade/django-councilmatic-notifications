@@ -10,10 +10,13 @@ def test_find_bill_action_updates(new_bill, new_bill_actions, subscriptions):
     assert subscriptions['bill_action'].last_seen_order == 0
     bill_action_updates = subscriptions['bill_action'].get_updates()
     assert len(bill_action_updates) == 2
+
     assert bill_action_updates[0][0]['slug'] == new_bill.slug
     assert bill_action_updates[0][1]['description'] == new_bill_actions[0].description
+
     assert bill_action_updates[1][0]['slug'] == new_bill.slug
     assert bill_action_updates[1][1]['description'] == new_bill_actions[1].description
+
     assert subscriptions['bill_action'].last_seen_order == new_bill_actions[1].order
 
 
@@ -32,25 +35,35 @@ def test_find_person_updates(new_bill, subscriptions):
         organization=new_bill.from_organization.councilmatic_organization,
         person=person
     )
+
     person_updates = subscriptions['person'].get_updates()
     assert len(person_updates) == 1
+
     assert person_updates['New sponsorships']['name'] == person.name
     assert person_updates['New sponsorships']['slug'] == person.slug
     assert person_updates['New sponsorships']['bills'][0]['slug'] == new_bill.slug
+
     assert subscriptions['person'].seen_sponsorship_ids == [spon.id]
 
 
 @pytest.mark.django_db
 def test_find_committee_action_updates(new_bill, new_bill_actions, subscriptions):
+    """
+    Test finding new BillActions for a committee.
+    """
     organization = new_bill.from_organization
     assert subscriptions['committee_action'].seen_bills.count() == 0
+
     committee_action_updates = subscriptions['committee_action'].get_updates()
     assert committee_action_updates['slug'] == organization.slug
+
     assert len(committee_action_updates['bills']) == 1
     assert committee_action_updates['bills'][0]['slug'] == new_bill.slug
+
     assert len(committee_action_updates['bills'][0]['actions']) == 2
     assert committee_action_updates['bills'][0]['actions'][0]['description'] == new_bill_actions[1].description
     assert committee_action_updates['bills'][0]['actions'][1]['description'] == new_bill_actions[0].description
+
     assert subscriptions['committee_action'].seen_bills.count() == 1
     assert subscriptions['committee_action'].seen_bills.first().last_seen_order == new_bill_actions[1].order
 
@@ -67,11 +80,15 @@ def test_find_committee_action_existing_updates(new_bill, new_bill_actions, subs
            last_seen_order=0
         )
     )
+
     committee_action_updates = subscriptions['committee_action'].get_updates()
     assert committee_action_updates['slug'] == organization.slug
+
     assert len(committee_action_updates['bills']) == 1
     assert committee_action_updates['bills'][0]['slug'] == new_bill.slug
+
     assert len(committee_action_updates['bills'][0]['actions']) == 2
+
     assert subscriptions['committee_action'].seen_bills.count() == 1
     assert subscriptions['committee_action'].seen_bills.first().last_seen_order == new_bill_actions[1].order
 
@@ -84,8 +101,10 @@ def test_find_committee_event_updates(new_events, subscriptions):
         event=event,
         organization=organization
     )
+
     committee_event_updates = subscriptions['committee_event'].get_updates()
     assert committee_event_updates['slug'] == organization.slug
+
     assert len(committee_event_updates['events']) == 1
     assert committee_event_updates['events'][0]['name'] == event.name
 

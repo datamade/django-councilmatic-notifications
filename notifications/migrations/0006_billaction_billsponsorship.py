@@ -11,7 +11,7 @@ import re
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('councilmatic_core', '0049_alter_person_headshot'),
+        ('councilmatic_core', '0048_post_shape'),
         ('notifications', '0005_auto_20161121_1208'),
     ]
 

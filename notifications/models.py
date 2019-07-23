@@ -163,7 +163,6 @@ class CommitteeActionSubscription(Subscription):
     seen_bills = models.ManyToManyField(CommitteeActionSubscriptionBill)
 
     def _get_updated_actions_by_bill(self):
-        # {bill: 'actions': [bill_actions], 'last_seen_order': last_seen_order}
         existing_actions = {}
         for bill_sub in self.seen_bills.all():
             actions = councilmatic_models.BillAction.objects.filter(

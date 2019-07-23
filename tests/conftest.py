@@ -1,5 +1,6 @@
 import datetime
 
+import requests
 import pytest
 import pytz
 from pytest_django.fixtures import db
@@ -106,7 +107,7 @@ def new_events(db, setup):
 
 @pytest.fixture
 @pytest.mark.django_db
-def subscriptions(user, new_bill):
+def subscriptions(user, new_bill, new_events):
     bill_action = notifications_models.BillActionSubscription.objects.create(
         user=user,
         bill=new_bill
@@ -123,6 +124,10 @@ def subscriptions(user, new_bill):
         user=user,
         committee=new_bill.from_organization
     )
+    committee_event = notifications_models.CommitteeEventSubscription.objects.create(
+        user=user,
+        committee=Organization.objects.first()
+    )
 
     # Update the created_at and updated_at times for items so that they get registered
     # as new
@@ -130,9 +135,33 @@ def subscriptions(user, new_bill):
     new_bill.updated_at = timezone.now()
     new_bill.save()
 
+    for event in new_events:
+        event.created_at = timezone.now()
+        event.updated_at = timezone.now()
+        event.save()
+
     return {
         'bill_action': bill_action,
         'bill_search': bill_search,
         'person': person,
-        'committee_action': committee_action
+        'committee_action': committee_action,
+        'committee_event': committee_event,
     }
+
+
+@pytest.mark.django_db
+@pytest.fixture
+def mock_bill_search(mocker, new_bill):
+    new_response = mocker.MagicMock(spec=requests.Response)
+    new_response.json.return_value = {
+        'response': {
+            'docs': [{
+                'ocd_id': new_bill.id,
+            }]
+        }
+    }
+    new_requests_get = mocker.MagicMock(
+        spec='requests.get',
+        return_value=new_response
+    )
+    return mocker.patch('requests.get', new=new_requests_get)

@@ -1,20 +1,14 @@
 # -*- coding: utf-8 -*-
 
-import json
 from itertools import chain
-from datetime import datetime, date, timedelta
 
-import requests
 import django_rq
-import pytz
 from django.core.management.base import BaseCommand
 from django.core.mail import EmailMultiAlternatives
-from django.db import connection
 from django.template.loader import get_template
 from django.conf import settings
-from django.contrib.auth.models import User
 
-from councilmatic_core import models as councilmatic_models
+from notifications.models import NotificationsUser
 
 
 class Command(BaseCommand):
@@ -32,47 +26,48 @@ class Command(BaseCommand):
         return len(elem) > 0
 
     def handle(self, *args, **options):
-        subscribed_users = User.objects.filter(subscriptions__isnull=False)
-        for user in subscribed_users:
-            # BillActionSubscription.get_updates() returns a list, so make
-            # sure to flatten the outer list.
-            bill_action_updates = filter(self._is_empty, chain.from_iterable([
-                sub.get_updates() for sub in user.billactionsubscription.all()
-            ]))
-            committee_action_updates = filter(self._is_empty, [
-                sub.get_updates() for sub in user.committeeactionsubscription.all()
-            ])
-            committee_event_updates = filter(self._is_empty, [
-                sub.get_updates() for sub in user.committeeeventsubscription.all()
-            ])
-            person_updates = filter(self._is_empty, [
-                sub.get_updates() for sub in user.personsubscription.all()
-            ])
-
-            try:
-                bill_search_updates = filter(self._is_empty, [
-                    sub.get_updates() for sub in user.billsearchsubscription.all()
+        users = NotificationsUser.objects.all()
+        for user in users:
+            if user.has_subscriptions:
+                # BillActionSubscription.get_updates() returns a list, so make
+                # sure to flatten the outer list.
+                bill_action_updates = filter(self._is_empty, chain.from_iterable([
+                    sub.get_updates() for sub in user.billactionsubscriptions.all()
+                ]))
+                committee_action_updates = filter(self._is_empty, [
+                    sub.get_updates() for sub in user.committeeactionsubscriptions.all()
                 ])
-            except AttributeError:
-                self.stdout.write(self.style.ERROR('Solr is not configured so no search notifications will be sent'))
-                bill_search_updates = []
+                committee_event_updates = filter(self._is_empty, [
+                    sub.get_updates() for sub in user.committeeeventsubscriptions.all()
+                ])
+                person_updates = filter(self._is_empty, [
+                    sub.get_updates() for sub in user.personsubscriptions.all()
+                ])
 
-            send_notification = any([
-                bill_action_updates, bill_search_updates,
-                committee_action_updates, committee_event_updates,
-                person_updates
-            ])
+                try:
+                    bill_search_updates = filter(self._is_empty, [
+                        sub.get_updates() for sub in user.billsearchsubscriptions.all()
+                    ])
+                except AttributeError:
+                    self.stdout.write(self.style.ERROR('Solr is not configured so no search notifications will be sent'))
+                    bill_search_updates = []
 
-            if send_notification:
-                send_notification_email.delay(
-                    user_id=user.id,
-                    user_email=user.email,
-                    bill_action_updates=bill_action_updates,
-                    bill_search_updates=bill_search_updates,
-                    person_updates=person_updates,
-                    committee_action_updates=committee_action_updates,
-                    committee_event_updates=committee_event_updates
-                )
+                send_notification = any(tuple(update) for update in [
+                    bill_action_updates, bill_search_updates,
+                    committee_action_updates, committee_event_updates,
+                    person_updates
+                ])
+
+                if send_notification:
+                    send_notification_email.delay(
+                        user_id=user.id,
+                        user_email=user.email,
+                        bill_action_updates=bill_action_updates,
+                        bill_search_updates=bill_search_updates,
+                        person_updates=person_updates,
+                        committee_action_updates=committee_action_updates,
+                        committee_event_updates=committee_event_updates
+                    )
 
 
 @django_rq.job

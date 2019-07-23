@@ -1,7 +1,6 @@
 import requests
-import pytz
 from django.db import models
-from django.db.models import Q, Max
+from django.db.models import Max
 from django.contrib.postgres.fields import JSONField, ArrayField
 from django.contrib.auth.models import User
 from django.conf import settings
@@ -16,6 +15,28 @@ except KeyError:
 
 
 # XXX: Consider having some global notifications configuration model/data such as a flag for NOT sending notifications (e.g. if you need to drop and reload the whole OCD dataset)
+
+class NotificationsUser(User):
+    """
+    Proxy model for a Django User providing useful methods related to this app.
+    """
+    class Meta:
+        proxy = True
+
+    @property
+    def has_subscriptions(self):
+        """
+        Return a boolean representing whether or not the user has any
+        subscriptions.
+        """
+        return 0 < (
+            self.personsubscriptions.count() +
+            self.billactionsubscriptions.count() +
+            self.committeeactionsubscriptions.count() +
+            self.committeeeventsubscriptions.count() +
+            self.billsearchsubscriptions.count()
+        )
+
 
 class Subscription(models.Model):
     # Each Subscription will have:

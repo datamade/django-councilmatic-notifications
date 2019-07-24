@@ -118,6 +118,11 @@ class BillActionSubscription(Subscription):
     last_seen_order = models.PositiveIntegerField(default=0)
 
     def get_updates(self):
+        # For other children of Subscription, get_updates() typically returns a
+        # dictionary with a nested list of updates for that subscription. However,
+        # due to legacy template code, this method will instead return a list
+        # of updates for the subscription. See management/commands/send_notifications.py
+        # for an example of how to handle this difference.
         bill_action_updates = []
         new_actions = councilmatic_models.BillAction.objects.filter(
             bill__id=self.bill.id,

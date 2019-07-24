@@ -27,25 +27,27 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         users = NotificationsUser.objects.all()
+        # Helper function to filter a list for non-empty elements.
+        def not_empty(elem): return len(elem) > 0
         for user in users:
             if user.has_subscriptions:
                 # BillActionSubscription.get_updates() returns a list, so make
-                # sure to flatten the outer list.
-                bill_action_updates = filter(self._is_empty, chain.from_iterable([
+                # sure to flatten the outer list with chain.from_iterable().
+                bill_action_updates = filter(not_empty, chain.from_iterable([
                     sub.get_updates() for sub in user.billactionsubscriptions.all()
                 ]))
-                committee_action_updates = filter(self._is_empty, [
+                committee_action_updates = filter(not_empty, [
                     sub.get_updates() for sub in user.committeeactionsubscriptions.all()
                 ])
-                committee_event_updates = filter(self._is_empty, [
+                committee_event_updates = filter(not_empty, [
                     sub.get_updates() for sub in user.committeeeventsubscriptions.all()
                 ])
-                person_updates = filter(self._is_empty, [
+                person_updates = filter(not_empty, [
                     sub.get_updates() for sub in user.personsubscriptions.all()
                 ])
 
                 try:
-                    bill_search_updates = filter(self._is_empty, [
+                    bill_search_updates = filter(not_empty, [
                         sub.get_updates() for sub in user.billsearchsubscriptions.all()
                     ])
                 except AttributeError:

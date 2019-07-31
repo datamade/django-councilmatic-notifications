@@ -22,9 +22,6 @@ class Command(BaseCommand):
             help='Comma separated list of usernames to send notifications to.'
         )
 
-    def _is_empty(self, elem):
-        return len(elem) > 0
-
     def handle(self, *args, **options):
         users = NotificationsUser.objects.all()
         # Helper function to filter a list for non-empty elements.

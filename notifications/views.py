@@ -7,17 +7,19 @@ import hashlib
 
 from io import StringIO
 
+import django
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponseRedirect, HttpResponse
 from django.conf import settings
 from django import forms
 from django.utils import timezone
 
-from django.core.urlresolvers import reverse
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMessage
 from django.core.cache import cache
 from django.core import management
+
+from django.urls import reverse
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -185,10 +187,6 @@ def notifications_login(request):
 def notifications_logout(request):
     logout(request)
     return HttpResponseRedirect('/')
-
-@login_required(login_url='/login/')
-def notifications_account_settings(request):
-    return HttpResponse('notifications_account_settings')
 
 class SubscriptionsManageView(LoginRequiredMixin, TemplateView):
     template_name = 'subscriptions_manage.html'

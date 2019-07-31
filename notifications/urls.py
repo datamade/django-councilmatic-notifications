@@ -1,16 +1,15 @@
+import django
 from django.conf.urls import include, url
 from django.views.decorators.cache import never_cache
-from django.contrib.auth.views import password_change, password_change_done
+import django.contrib.auth.views as auth_views
 
 from notifications.views import notifications_login, notifications_logout, \
-    notifications_signup, notifications_activation, notifications_account_settings, \
+    notifications_signup, notifications_activation, \
     SubscriptionsManageView, person_subscribe, person_unsubscribe, bill_subscribe, \
     bill_unsubscribe, committee_events_subscribe, committee_events_unsubscribe, \
     committee_actions_subscribe, committee_actions_unsubscribe, search_check_subscription, \
     search_subscribe, search_unsubscribe, events_subscribe, events_unsubscribe, \
     send_notifications
-
-import django_rq
 
 
 urlpatterns = [
@@ -18,7 +17,6 @@ urlpatterns = [
     url(r'^logout/$', notifications_logout, name='notifications_logout'),
     url(r'^signup/$', notifications_signup, name='notifications_signup'),
     url(r'^activation/(?P<activation_key>[^/]+)/$', notifications_activation, name='notifications_activation'),
-    url(r'^account/settings/$', notifications_account_settings, name='notifications_account_settings'),
     url(r'^account/subscriptions/$', never_cache(SubscriptionsManageView.as_view()), name='subscriptions_manage'),
     # url(r'^notification_loaddata$', notification_loaddata, name='notification_loaddata'),
     # list of things to subscribe/unsubscribe to:
@@ -54,10 +52,10 @@ urlpatterns = [
 
     # URLs for password resets and changes.
     url(r'', include('password_reset.urls')),
-    url(r'^password/change/$', password_change, {
+    url(r'^password/change/$', auth_views.PasswordChangeView.as_view(), {
         'template_name': 'password_change_form.html'},
         name='password_change'),
-    url(r'^password/change/done/$', password_change_done,
+    url(r'^password/change/done/$', auth_views.PasswordChangeDoneView.as_view(),
         {'template_name': 'password_change_done.html'},
         name='password_change_done'),
 ]

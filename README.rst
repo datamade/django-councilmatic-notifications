@@ -1,5 +1,5 @@
 django-councilmatic-notifications
-===========
+=================================
 
 This is a Django app with notification functions for the `Councilmatic family <http://www.councilmatic.org/>`_, a set of web apps for keeping tabs on local city council. It is built upon the open civic data standard, and ultimately makes Councilmatic easier to re-deploy in new cities.
 
@@ -10,7 +10,8 @@ The `Councilmatic family <http://www.councilmatic.org/>`_ includes:
 - New York City Councilmatic (launched & built on django-councilmatic)
 
 Councilmatic in your city
-----
+-------------------------
+
 If you're interested in bringing Councilmatic to your city, `contact us <mailto:info@councilmatic.org>`_! We'd love to help.
 
 Team

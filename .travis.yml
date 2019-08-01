@@ -1,0 +1,31 @@
+branches:
+  only:
+  - master
+  - "/^v.*$/"
+language: python
+python: '3.4'
+env:
+- db_user=postgres
+addons:
+  postgresql: '9.4'
+  apt:
+    packages:
+    - postgresql-9.4-postgis-2.3
+before_script:
+- psql -U postgres -c "create extension postgis"
+install:
+- pip install -e .[tests]
+sudo: required
+dist: trusty
+group: deprecated-2017Q4
+script:
+- pytest
+deploy:
+  provider: pypi
+  user: datamade.wheelbuilder
+  password:
+    secure: MOpp+/yjBShYmSvGqa0hNnj0Lo5rphy5PCKluapXTMNUK9ggBDt1S2y5SzVhjvUXkcAX6+gEpYINQMLK8bzUsAPC6SU6zjF1tUYQPtVa5Dc/lKTOa/n8ScrojhmkkBDFpf8XFGLRcofddOGkwyFi6QqF1I3X2duJtudfMF86cfIlQKqsZEYpWvccsvH4jWJTBhfzzuZ+OY7l40zktMVjGP6b2ffNtv2lXM2Usm+mfmHXPYUHdAHCDTojnhQfdHpRBojTZcCbeQb+ysVTBxAHmMMGHmU628XNS27c5wDsSLuT6UGyl7+WBXoWND4vDPUhjvAJU3iG7e4FSGLAfJlzVu9yMetPc/uDBoRPaFbB26as7AhrOGGPBHFtKoekNN/ygYhp90qilp0zZVjium79Hxr/onEOUDnk//qBya0ySfKCHWlrb106om9PUpE8uzfvsVmNrp1qPiUbxkclCZN5eJaXoX9qMeI57ca1O/Yd5M97WwGdkKgQmRHAyzGplO8Q4o4eQZ9eJ51f2cONDjb4Uf1qvE1lOS6sfsDZ6xQVsjlJcm1juLznCovSIxwsTrJ0e+x1opO3D/nRRWPO0pHmmhPrs8LeHfpnOfDJOcQ/mHFb3D8xC4N3DXJ7K3iyDzPhmHqayUsaQ/oJwaYmSDPjMVsKN0vMnDGrDlqlabZy52U=
+  on:
+    tags: true
+    distributions: sdist bdist_wheel
+    repo: datamade/django-councilmatic-notifications

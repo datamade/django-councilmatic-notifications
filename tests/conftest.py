@@ -156,7 +156,7 @@ def mock_bill_search(mocker, new_bill):
     new_response.json.return_value = {
         'response': {
             'docs': [{
-                'ocd_id': new_bill.id,
+                'id': new_bill.id,
             }]
         }
     }

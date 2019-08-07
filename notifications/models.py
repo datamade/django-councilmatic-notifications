@@ -293,7 +293,7 @@ class BillSearchSubscription(Subscription):
 
         results = requests.get('{}/select'.format(HAYSTACK_URL), params=query_params)
 
-        ocd_ids = tuple(r['ocd_id'] for r in results.json()['response']['docs'])
+        ocd_ids = tuple(r['id'] for r in results.json()['response']['docs'])
 
         search_update = {}
         if ocd_ids:

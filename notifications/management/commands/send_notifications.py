@@ -23,9 +23,14 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        users = NotificationsUser.objects.all()
+
+        if options['users'] != 'all':
+            names = tuple(options['users'].split(','))
+            users = NotificationsUser.objects.filter(username__in=names)
+        else:
+            users = NotificationsUser.objects.all()
+
         # Helper function to filter a list for non-empty elements.
-        def not_empty(elem): return len(elem) > 0
         for user in users:
             if user.has_subscriptions:
                 # BillActionSubscription.get_updates() returns a list, so make
@@ -108,3 +113,7 @@ def send_notification_email(user_id=None,
 
     msg.attach_alternative(html_content, 'text/html')
     msg.send()
+
+
+def not_empty(elem):
+    return len(elem) > 0

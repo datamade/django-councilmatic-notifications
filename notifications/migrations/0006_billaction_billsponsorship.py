@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='personsubscription',
             name='seen_sponsorship_ids',
-            field=django.contrib.postgres.fields.ArrayField(base_field=opencivicdata.core.models.base.OCDIDField(ocd_type='bill', validators=[django.core.validators.RegexValidator(flags=re.RegexFlag(32), message='ID must match ^ocd-bill/[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$', regex='^ocd-bill/[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$')]), default=list, size=None),
+            field=django.contrib.postgres.fields.ArrayField(base_field=opencivicdata.core.models.base.OCDIDField(ocd_type='bill', validators=[django.core.validators.RegexValidator(flags=re.UNICODE), message='ID must match ^ocd-bill/[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$', regex='^ocd-bill/[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$')]), default=list, size=None),
         ),
         migrations.AddField(
             model_name='committeeactionsubscription',

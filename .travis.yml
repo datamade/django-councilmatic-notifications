@@ -4,7 +4,7 @@ branches:
   - '2.5'
   - "/^v.*$/"
 language: python
-python: '3.6'
+python: '3.4'
 env:
 - db_user=postgres
 addons:
